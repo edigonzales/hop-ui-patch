@@ -1,12 +1,13 @@
 # Upstream baseline
 
-This patch set is developed against Apache Hop `main` at:
+This patch set is developed against Apache Hop `2.19.0` at:
 
 - repository: `apache/hop`
-- commit: `bab67a10d01b76e6f93f30dde735d50fc87c1b04`
-- date: 2026-08-27
+- release source tag: `2.19.0-rc1`
+- commit: `46436154ae1a1e940861d485559819360c2af86e`
+- release branch: `release/2.19.0`
 
-The pin is intentional. SWT/UI code changes quickly enough that a visual patch should fail loudly rather than silently apply to a structurally different revision.
+The root Maven project at this commit has version `2.19.0`. The exact commit pin is intentional: SWT/UI code changes quickly enough that a visual patch should fail loudly rather than silently apply to a structurally different revision.
 
 When rebasing the patch, inspect at least these files in upstream Hop:
 
