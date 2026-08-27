@@ -18,9 +18,9 @@ No transform dialogs or business logic are changed.
 
 ## Upstream
 
-The patch is currently pinned to Apache Hop commit:
+The patch targets **Apache Hop 2.19.0** and is pinned to the release source commit:
 
-`bab67a10d01b76e6f93f30dde735d50fc87c1b04`
+`46436154ae1a1e940861d485559819360c2af86e`
 
 See `UPSTREAM.md`.
 
@@ -40,6 +40,8 @@ After applying, build Hop normally. A focused first check is:
 cd /path/to/apache-hop
 ./mvnw -pl ui,engine -am -DskipTests package
 ```
+
+`package` is intentional here: `hop-engine` has a test-scope dependency on the `hop-core` tests JAR, which is attached during Maven's package phase and is therefore not available when the reactor is stopped at `compile`.
 
 ## Design direction
 
