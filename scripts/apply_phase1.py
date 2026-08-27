@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply Phase 1 of hop-ui-patch to a pinned Apache Hop checkout."""
+"""Apply Phase 1 of hop-ui-patch to a pinned Apache Hop 2.19.0 checkout."""
 
 from __future__ import annotations
 
@@ -9,7 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-UPSTREAM = "bab67a10d01b76e6f93f30dde735d50fc87c1b04"
+# Apache Hop 2.19.0 release source (tag 2.19.0-rc1).
+UPSTREAM = "46436154ae1a1e940861d485559819360c2af86e"
 
 
 def fail(message: str) -> None:
