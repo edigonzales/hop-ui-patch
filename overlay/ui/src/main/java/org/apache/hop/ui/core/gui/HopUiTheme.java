@@ -21,6 +21,13 @@ public final class HopUiTheme {
 
   public static final int TAB_HEIGHT = 26;
 
+  // Perspective rail. Keep it compact, but leave enough breathing room around 20px icons.
+  public static final int SIDEBAR_WIDTH = 40;
+  public static final int SIDEBAR_BUTTON_SIZE = 36;
+  public static final int SIDEBAR_ICON_SIZE = 20;
+  public static final int SIDEBAR_INDICATOR_WIDTH = 3;
+  public static final int SIDEBAR_INDICATOR_INSET = 8;
+
   public static RGB applicationBackground(boolean darkMode) {
     return darkMode ? rgb(35, 35, 35) : rgb(255, 255, 255);
   }
@@ -43,6 +50,23 @@ public final class HopUiTheme {
 
   public static RGB textSecondary(boolean darkMode) {
     return darkMode ? rgb(170, 170, 170) : rgb(107, 114, 128);
+  }
+
+  public static RGB sidebarBackground(boolean darkMode) {
+    return panelBackground(darkMode);
+  }
+
+  public static RGB sidebarHover(boolean darkMode) {
+    return darkMode ? rgb(51, 51, 53) : rgb(238, 239, 241);
+  }
+
+  public static RGB sidebarSelection(boolean darkMode) {
+    return darkMode ? rgb(59, 61, 64) : rgb(231, 234, 237);
+  }
+
+  public static RGB sidebarIndicator(boolean darkMode) {
+    // A restrained cool accent that already fits Hop's existing blue-gray UI vocabulary.
+    return darkMode ? rgb(126, 159, 182) : rgb(61, 99, 128);
   }
 
   private static RGB rgb(int red, int green, int blue) {
