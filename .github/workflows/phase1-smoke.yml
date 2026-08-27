@@ -1,0 +1,39 @@
+name: Phase 1 smoke test
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+
+jobs:
+  apply-and-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch repository
+        uses: actions/checkout@v4
+
+      - name: Checkout Apache Hop 2.19.0
+        uses: actions/checkout@v4
+        with:
+          repository: apache/hop
+          ref: 46436154ae1a1e940861d485559819360c2af86e
+          path: hop
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Apply Phase 1
+        run: python3 scripts/apply_phase1.py "$GITHUB_WORKSPACE/hop"
+
+      - name: Show resulting diff
+        run: git -C hop diff --check && git -C hop diff --stat
+
+      - name: Build affected modules
+        working-directory: hop
+        # hop-engine has a test-scope dependency on hop-core's tests JAR.
+        # The attached tests JAR is created in Maven's package phase, not compile.
+        run: ./mvnw -pl ui,engine -am -DskipTests package
