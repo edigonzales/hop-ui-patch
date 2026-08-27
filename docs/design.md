@@ -22,6 +22,21 @@ Light mode:
 
 Dark mode mirrors the hierarchy instead of merely inverting RGB values.
 
+## Perspective rail
+
+The 2.19.0 desktop sidebar already uses an owner-drawn SWT `Canvas`, so it is a safe place to be more deliberate than with normal SWT controls. Phase 1B turns it into an IDE-style rail rather than a column of rounded buttons:
+
+- 40 logical-pixel rail;
+- 36 logical-pixel hit targets;
+- 20 logical-pixel perspective/action icons;
+- neutral panel background;
+- subtle rectangular hover and selected surfaces;
+- 3 logical-pixel active indicator on the left;
+- one shared paint routine for perspective and bottom action buttons;
+- matching semantic colors for RAP, while the active indicator itself is desktop-only for now.
+
+The active state should read from peripheral vision without turning the whole navigation item into a colored card.
+
 ## SWT strategy
 
 Do not introduce owner-drawn replacements for standard text fields, buttons, tables or scroll bars in the first phases. Those controls are expensive to maintain and tend to regress accessibility and platform behavior.
@@ -31,7 +46,7 @@ Prefer, in order:
 1. existing Hop resource/palette abstractions;
 2. existing `PropsUi.setLook(...)` hooks;
 3. standard SWT control properties;
-4. owner drawing only for controls Hop already draws itself (canvas, SVG-label navigation etc.).
+4. owner drawing only for controls Hop already draws itself (canvas, existing sidebar canvases, SVG-label navigation etc.).
 
 ## Phase sequence
 
@@ -45,9 +60,11 @@ Prefer, in order:
 
 ### Phase 1B — navigation
 
-- slim perspective rail;
-- borderless SVG-label buttons;
-- active perspective indicator;
+- compact perspective rail;
+- consistent icon and hit-target sizing;
+- borderless, non-rounded desktop buttons;
+- active perspective/action indicator;
+- shared renderer for top and bottom sidebar buttons;
 - hover/selected states based on theme tokens.
 
 ### Phase 1C — toolbar
