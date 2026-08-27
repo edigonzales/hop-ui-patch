@@ -29,7 +29,7 @@ See `UPSTREAM.md`.
 From a checkout of this repository:
 
 ```bash
-./scripts/apply-phase1.sh /path/to/apache-hop
+bash scripts/apply-phase1.sh /path/to/apache-hop
 ```
 
 The script refuses to modify an unexpected Hop revision unless `HOP_UI_PATCH_ALLOW_DIRTY=1` is set.
