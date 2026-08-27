@@ -19,6 +19,13 @@ jobs:
           ref: bab67a10d01b76e6f93f30dde735d50fc87c1b04
           path: hop
 
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
       - name: Apply Phase 1
         run: python3 scripts/apply_phase1.py "$GITHUB_WORKSPACE/hop"
 
