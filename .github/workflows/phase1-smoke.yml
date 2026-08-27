@@ -1,0 +1,30 @@
+name: Phase 1 smoke test
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+
+jobs:
+  apply-and-compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch repository
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned Apache Hop
+        uses: actions/checkout@v4
+        with:
+          repository: apache/hop
+          ref: bab67a10d01b76e6f93f30dde735d50fc87c1b04
+          path: hop
+
+      - name: Apply Phase 1
+        run: python3 scripts/apply_phase1.py "$GITHUB_WORKSPACE/hop"
+
+      - name: Show resulting diff
+        run: git -C hop diff --check && git -C hop diff --stat
+
+      - name: Compile affected modules
+        working-directory: hop
+        run: ./mvnw -pl ui,engine -am -DskipTests compile
