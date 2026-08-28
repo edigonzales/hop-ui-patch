@@ -19,10 +19,10 @@ jobs:
           ref: 46436154ae1a1e940861d485559819360c2af86e
           path: hop
 
-      - name: Apply through Phase 3 from clean checkout
+      - name: Apply through Phase 4 from clean checkout
         run: |
           set -o pipefail
-          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-clean.log
+          bash scripts/apply-phase4.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-clean.log
 
       - name: Check managed patch status
         run: |
@@ -34,42 +34,15 @@ jobs:
           git -C hop diff --check
           git -C hop diff --binary > /tmp/current-full.diff
 
-      - name: Reapply through Phase 3
+      - name: Reapply through Phase 4
         run: |
           set -o pipefail
-          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/reapply.log
+          bash scripts/apply-phase4.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/reapply.log
 
       - name: Verify repeated apply changed nothing
         run: |
           git -C hop diff --binary > /tmp/current-second.diff
           cmp /tmp/current-full.diff /tmp/current-second.diff
-
-      - name: Upgrade from legacy Phase 1A-only checkout
-        run: |
-          set -o pipefail
-          git -C hop reset --hard HEAD
-          git -C hop clean -fd
-          rm -f hop/.git/hop-ui-patch-state.json
-          python3 scripts/apply_phase1a.py "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-1a.log
-          bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-1a.log
-          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-1a.log
-          git -C hop diff --check
-          git -C hop diff --binary > /tmp/from-1a.diff
-          cmp /tmp/current-full.diff /tmp/from-1a.diff
-
-      - name: Upgrade from legacy Phase 1A+1B checkout
-        run: |
-          set -o pipefail
-          git -C hop reset --hard HEAD
-          git -C hop clean -fd
-          rm -f hop/.git/hop-ui-patch-state.json
-          python3 scripts/apply_phase1a.py "$GITHUB_WORKSPACE/hop"
-          python3 scripts/apply_phase1b.py "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-1b.log
-          bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-1b.log
-          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-1b.log
-          git -C hop diff --check
-          git -C hop diff --binary > /tmp/from-1b.diff
-          cmp /tmp/current-full.diff /tmp/from-1b.diff
 
       - name: Upgrade from complete Phase 1 checkout
         run: |
@@ -78,16 +51,47 @@ jobs:
           git -C hop clean -fd
           rm -f hop/.git/hop-ui-patch-state.json
           bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-phase1.log
-          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-phase1.log
+          bash scripts/apply-phase4.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-phase1.log
           git -C hop diff --check
           git -C hop diff --binary > /tmp/from-phase1.diff
           cmp /tmp/current-full.diff /tmp/from-phase1.diff
+
+      - name: Create legacy Phase 3 state file
+        run: |
+          set -o pipefail
+          git -C hop reset --hard HEAD
+          git -C hop clean -fd
+          rm -f hop/.git/hop-ui-patch-state.json
+          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-phase3.log
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          state_path = Path("hop/.git/hop-ui-patch-state.json")
+          state = json.loads(state_path.read_text())
+          state["phases"].pop("4", None)
+          for path in (
+              "engine/src/main/java/org/apache/hop/core/gui/BasePainter.java",
+              "engine/src/main/java/org/apache/hop/pipeline/PipelinePainter.java",
+              "engine/src/main/java/org/apache/hop/workflow/WorkflowPainter.java",
+          ):
+              state["files"].pop(path, None)
+          state_path.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
+          PY
+
+      - name: Upgrade legacy Phase 3 state to Phase 4
+        run: |
+          set -o pipefail
+          bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-legacy-phase3.log
+          bash scripts/apply-phase4.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-phase3.log
+          git -C hop diff --check
+          git -C hop diff --binary > /tmp/from-phase3.diff
+          cmp /tmp/current-full.diff /tmp/from-phase3.diff
 
       - name: Reject unknown local changes
         run: |
           set -o pipefail
           printf '\nunknown local edit\n' >> hop/README.md
-          if bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/unknown-change.log; then
+          if bash scripts/apply-phase4.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/unknown-change.log; then
             echo "Patch manager unexpectedly accepted an unknown local change"
             exit 1
           fi
@@ -101,14 +105,11 @@ jobs:
             /tmp/apply-clean.log
             /tmp/status-full.log
             /tmp/reapply.log
-            /tmp/apply-1a.log
-            /tmp/status-1a.log
-            /tmp/upgrade-1a.log
-            /tmp/apply-1b.log
-            /tmp/status-1b.log
-            /tmp/upgrade-1b.log
             /tmp/apply-phase1.log
             /tmp/upgrade-phase1.log
+            /tmp/apply-phase3.log
+            /tmp/status-legacy-phase3.log
+            /tmp/upgrade-phase3.log
             /tmp/unknown-change.log
 
   build:
@@ -132,8 +133,8 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Apply through Phase 3
-        run: bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop"
+      - name: Apply through Phase 4
+        run: bash scripts/apply-phase4.sh "$GITHUB_WORKSPACE/hop"
 
       - name: Build affected modules
         working-directory: hop
