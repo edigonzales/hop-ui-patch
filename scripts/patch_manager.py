@@ -23,6 +23,7 @@ PHASE_SCRIPTS = {
     "1B": "apply_phase1b.py",
     "1C": "apply_phase1c.py",
     "3": "apply_phase3.py",
+    "4": "apply_phase4.py",
 }
 
 
@@ -50,6 +51,7 @@ def print_status(hop: Path, phases: dict[str, str]) -> None:
         "1B": "Perspective rail",
         "1C": "Toolbar",
         "3": "Tables & preview",
+        "4": "Canvas interaction",
     }
     symbols = {"applied": "✓", "missing": "·", "partial": "!"}
     for phase in PHASE_ORDER:
