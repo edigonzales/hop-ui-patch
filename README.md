@@ -2,11 +2,11 @@
 
 Experimental UI modernization patch set for Apache Hop Desktop (SWT).
 
-The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, then navigation and toolbar refinement.
+The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement and a flatter native toolbar.
 
 ## Phase 1
 
-The implementation currently covers the visual foundations and the perspective rail:
+The implementation currently covers the visual foundations, perspective rail and main/status toolbars:
 
 - a central `HopUiTheme` with light/dark design tokens;
 - calmer application and canvas surfaces;
@@ -16,7 +16,11 @@ The implementation currently covers the visual foundations and the perspective r
 - a compact 40px perspective rail;
 - unified 20px sidebar icons and 36px hit targets;
 - neutral hover/selection surfaces instead of rounded button cards;
-- a slim active indicator shared by perspective and bottom sidebar actions on desktop SWT.
+- a slim active indicator shared by perspective and bottom sidebar actions on desktop SWT;
+- native `SWT.FLAT` main and status toolbars;
+- 16px toolbar icons kept intentionally for legibility;
+- toolbar groups separated by whitespace instead of classic SWT/RAP groove lines;
+- shared toolbar spacing tokens for desktop and Web/RAP paths.
 
 No transform dialogs or business logic are changed.
 
@@ -36,7 +40,7 @@ From a checkout of this repository:
 bash scripts/apply-phase1.sh /path/to/apache-hop
 ```
 
-The script refuses to modify an unexpected Hop revision unless `HOP_UI_PATCH_ALLOW_DIRTY=1` is set.
+The wrapper applies Phase 1A/1B first and Phase 1C afterwards. The first applicator refuses to modify an unexpected Hop revision unless `HOP_UI_PATCH_ALLOW_DIRTY=1` is set; Phase 1C verifies the pinned revision and the expected Phase 1 theme markers.
 
 After applying, build Hop normally. A focused check is:
 
@@ -51,4 +55,4 @@ cd /path/to/apache-hop
 
 See `docs/design.md`. The goal is not a web-style skin or custom SWT widget framework. The target is a cleaner native desktop IDE: quieter surfaces, clearer hierarchy, fewer borders, consistent spacing and restrained use of accent colors.
 
-Next: Phase 1C will refine the main toolbar while continuing to use standard SWT/Hop toolbar infrastructure.
+Next: Phase 2 should move into shared dialogs/widgets, starting with reusable table/form infrastructure rather than individual transform dialogs.
