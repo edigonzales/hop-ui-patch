@@ -40,7 +40,42 @@ From a checkout of this repository:
 bash scripts/apply-phase1.sh /path/to/apache-hop
 ```
 
-The wrapper applies Phase 1A/1B first and Phase 1C afterwards. The first applicator refuses to modify an unexpected Hop revision unless `HOP_UI_PATCH_ALLOW_DIRTY=1` is set; Phase 1C verifies the pinned revision and the expected Phase 1 theme markers.
+The command is idempotent. It detects Phase 1A, 1B and 1C independently, skips phases that are already present and applies only the missing phases. This also supports upgrading an older checkout where, for example, only Phase 1A was applied.
+
+Example on a partially patched checkout:
+
+```text
+1A: already applied, skipping.
+Applying 1B...
+Applying 1C...
+```
+
+The manager is deliberately conservative. It refuses:
+
+- a Hop checkout that is not the pinned 2.19.0 source revision;
+- partially applied/inconsistent phase markers;
+- unknown local changes outside the managed patch files;
+- changes to managed files after their state was recorded.
+
+The recorded state and SHA-256 hashes live inside the target Hop checkout's Git metadata (`.git/hop-ui-patch-state.json`), so no bookkeeping file is added to the Hop working tree. Existing Phase 1 checkouts created before the state manager are adopted once from structural phase markers; subsequent runs are hash-verified.
+
+## Status
+
+```bash
+bash scripts/status.sh /path/to/apache-hop
+```
+
+Example:
+
+```text
+Apache Hop: 2.19.0
+UI patch:
+  1A Foundations        ✓ applied
+  1B Perspective rail   ✓ applied
+  1C Toolbar            · missing
+```
+
+## Build
 
 After applying, build Hop normally. A focused check is:
 
