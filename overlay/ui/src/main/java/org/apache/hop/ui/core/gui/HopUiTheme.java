@@ -46,6 +46,11 @@ public final class HopUiTheme {
   public static final boolean TABLE_GRID_LINES_VISIBLE = false;
   public static final int TABLE_INDEX_COLUMN_WIDTH = 30;
 
+  // CCombo popups can otherwise grow to almost the full screen for large technical value sets such
+  // as Java character encodings. A compact visible row count keeps the popup scannable while the
+  // existing CCombo scrollbar still provides access to every value.
+  public static final int COMBO_VISIBLE_ITEM_COUNT = 10;
+
   public static RGB applicationBackground(boolean darkMode) {
     return darkMode ? rgb(35, 35, 35) : rgb(255, 255, 255);
   }

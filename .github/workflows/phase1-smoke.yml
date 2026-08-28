@@ -148,6 +148,7 @@ jobs:
           rm -f hop/.git/hop-ui-patch-state.json
           bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop"
           python3 - <<'PY'
+          import hashlib
           import json
           from pathlib import Path
 
@@ -164,6 +165,14 @@ jobs:
               "ui/src/main/java/org/apache/hop/ui/core/gui/GuiToolbarWidgets.java",
           }
           state["files"] = {key: value for key, value in state["files"].items() if key in legacy_paths}
+
+          # Reproduce the real pre-migration state seen in an existing checkout: state-v1 recorded
+          # the earlier Phase 1C toolbar hash, while the working tree contains the final canonical
+          # Phase 1C cleanup. The manager must accept only this exact historical transition.
+          toolbar = "ui/src/main/java/org/apache/hop/ui/core/gui/GuiToolbarWidgets.java"
+          canonical = hashlib.sha256((Path("hop") / toolbar).read_bytes()).hexdigest()
+          assert canonical == "7d91ba78ca39fd6e0eb3f4d7c149c9e9bafe7416e408d0f81f92189e0599ffee", canonical
+          state["files"][toolbar] = "c214f1f614a2562550e99e59981fd6a8e898a9846d38201a68021e47c59b5447"
           state_path.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
           PY
 
@@ -171,6 +180,7 @@ jobs:
         run: |
           set -o pipefail
           bash scripts/apply-ui-patch.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-state-v1.log
+          grep -q "Migrating known legacy managed-file state.*Phase 1C toolbar spacer cleanup" /tmp/upgrade-state-v1.log
 
       - name: Verify state-v1 upgrade converges
         run: |
