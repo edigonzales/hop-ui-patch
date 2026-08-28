@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Idempotent Phase 1 patch manager for Apache Hop 2.19.0."""
+"""Idempotent UI patch manager for Apache Hop 2.19.0."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 from patch_state import (
+    PHASE_ORDER,
     THEME,
     detect_phases,
     fail,
@@ -17,11 +18,11 @@ from patch_state import (
     write_state,
 )
 
-PHASE_ORDER = ("1A", "1B", "1C")
 PHASE_SCRIPTS = {
     "1A": "apply_phase1a.py",
     "1B": "apply_phase1b.py",
     "1C": "apply_phase1c.py",
+    "3": "apply_phase3.py",
 }
 
 
@@ -48,14 +49,15 @@ def print_status(hop: Path, phases: dict[str, str]) -> None:
         "1A": "Foundations",
         "1B": "Perspective rail",
         "1C": "Toolbar",
+        "3": "Tables & preview",
     }
     symbols = {"applied": "✓", "missing": "·", "partial": "!"}
     for phase in PHASE_ORDER:
         status = phases[phase]
-        print(f"  {phase} {labels[phase]:18} {symbols[status]} {status}")
+        print(f"  {phase:>2} {labels[phase]:18} {symbols[status]} {status}")
 
 
-def apply_to(hop: Path, through: str = "1C") -> None:
+def apply_to(hop: Path, through: str) -> None:
     repo = Path(__file__).resolve().parents[1]
     phases = verify_or_adopt(hop)
     partial = [phase for phase, status in phases.items() if status == "partial"]
@@ -95,9 +97,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    apply_parser = subparsers.add_parser("apply", help="apply missing Phase 1 patches")
+    apply_parser = subparsers.add_parser("apply", help="apply missing UI patch phases")
     apply_parser.add_argument("hop", type=Path)
-    apply_parser.add_argument("--through", choices=PHASE_ORDER, default="1C")
+    apply_parser.add_argument("--through", choices=PHASE_ORDER, default=PHASE_ORDER[-1])
 
     status_parser = subparsers.add_parser("status", help="show patch status")
     status_parser.add_argument("hop", type=Path)

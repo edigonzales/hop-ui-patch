@@ -35,6 +35,11 @@ public final class HopUiTheme {
   public static final int TOOLBAR_ITEM_PADDING = 2;
   public static final int TOOLBAR_CONTROL_GAP = 3;
 
+  // Tables and preview grids. A slightly wider row-number column keeps two/three digit indexes from
+  // feeling cramped. The small toolbar gap separates commands from data without another border.
+  public static final int TABLE_INDEX_COLUMN_WIDTH = 32;
+  public static final int TABLE_TOOLBAR_GAP = 4;
+
   public static RGB applicationBackground(boolean darkMode) {
     return darkMode ? rgb(35, 35, 35) : rgb(255, 255, 255);
   }

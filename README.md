@@ -2,11 +2,11 @@
 
 Experimental UI modernization patch set for Apache Hop Desktop (SWT).
 
-The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement and a flatter native toolbar.
+The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement, flatter native toolbars and calmer shared data grids.
 
-## Phase 1
+## Implemented phases
 
-The implementation currently covers the visual foundations, perspective rail and main/status toolbars:
+### Phase 1 — application shell
 
 - a central `HopUiTheme` with light/dark design tokens;
 - calmer application and canvas surfaces;
@@ -22,7 +22,19 @@ The implementation currently covers the visual foundations, perspective rail and
 - toolbar groups separated by whitespace instead of classic SWT/RAP groove lines;
 - shared toolbar spacing tokens for desktop and Web/RAP paths.
 
-No transform dialogs or business logic are changed.
+### Phase 3 — tables and preview grids
+
+- shared `TableView` remains a native SWT `Table`;
+- full cell grid lines are hidden for a quieter IDE-style grid;
+- Windows/Linux headers use the quiet panel surface while macOS keeps native foreground handling;
+- the shared table toolbar uses `SWT.FLAT` and Phase 1C whitespace grouping;
+- a small semantic gap separates toolbar commands from table data;
+- the row-number column is widened slightly for better HiDPI legibility;
+- preview/show-rows and many transform configuration grids inherit the change automatically through `TableView`.
+
+See `docs/phase3-tables.md` for the design boundaries.
+
+No transform business logic is changed.
 
 ## Upstream
 
@@ -34,21 +46,19 @@ See `UPSTREAM.md`.
 
 ## Apply
 
-From a checkout of this repository:
+Phase 1 only:
 
 ```bash
 bash scripts/apply-phase1.sh /path/to/apache-hop
 ```
 
-The command is idempotent. It detects Phase 1A, 1B and 1C independently, skips phases that are already present and applies only the missing phases. This also supports upgrading an older checkout where, for example, only Phase 1A was applied.
+Current UI patch through Phase 3:
 
-Example on a partially patched checkout:
-
-```text
-1A: already applied, skipping.
-Applying 1B...
-Applying 1C...
+```bash
+bash scripts/apply-phase3.sh /path/to/apache-hop
 ```
+
+The manager is idempotent. It detects phases independently, skips phases that are already present and applies only the missing phases. This supports upgrading older checkouts, for example from Phase 1A–1C directly to Phase 3.
 
 The manager is deliberately conservative. It refuses:
 
@@ -57,7 +67,7 @@ The manager is deliberately conservative. It refuses:
 - unknown local changes outside the managed patch files;
 - changes to managed files after their state was recorded.
 
-The recorded state and SHA-256 hashes live inside the target Hop checkout's Git metadata (`.git/hop-ui-patch-state.json`), so no bookkeeping file is added to the Hop working tree. Existing Phase 1 checkouts created before the state manager are adopted once from structural phase markers; subsequent runs are hash-verified.
+The recorded state and SHA-256 hashes live inside the target Hop checkout's Git metadata (`.git/hop-ui-patch-state.json`), so no bookkeeping file is added to the Hop working tree. Older state files that predate a later phase are migrated by treating unknown later phases as not-yet-applied, while still verifying all hashes that were recorded previously.
 
 ## Status
 
@@ -72,7 +82,8 @@ Apache Hop: 2.19.0
 UI patch:
   1A Foundations        ✓ applied
   1B Perspective rail   ✓ applied
-  1C Toolbar            · missing
+  1C Toolbar            ✓ applied
+   3 Tables & preview   · missing
 ```
 
 ## Build
@@ -90,4 +101,4 @@ cd /path/to/apache-hop
 
 See `docs/design.md`. The goal is not a web-style skin or custom SWT widget framework. The target is a cleaner native desktop IDE: quieter surfaces, clearer hierarchy, fewer borders, consistent spacing and restrained use of accent colors.
 
-Next: Phase 2 should move into shared dialogs/widgets, starting with reusable table/form infrastructure rather than individual transform dialogs.
+Phase 4 focuses on canvas interaction feedback: node selection, name hover and lasso selection, while preserving existing context actions, drag/drop and keyboard semantics.
