@@ -2,7 +2,7 @@ name: UI patch smoke test
 
 on:
   push:
-    branches: [main, "feature/**"]
+    branches: [main, "feature/**", "tmp/**"]
   pull_request:
 
 jobs:
@@ -58,6 +58,7 @@ jobs:
           bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-phase1.log
           grep -q "2 Shared dialogs/forms.*missing" /tmp/status-phase1.log
           grep -q "3 Tables/preview grids.*missing" /tmp/status-phase1.log
+          grep -q "4 Canvas interaction.*missing" /tmp/status-phase1.log
 
       - name: Upgrade Phase 1 to latest UI patch
         run: |
@@ -78,14 +79,15 @@ jobs:
           rm -f hop/.git/hop-ui-patch-state.json
           python3 scripts/patch_manager.py apply "$GITHUB_WORKSPACE/hop" --through 2 2>&1 | tee /tmp/apply-phase2.log
 
-      - name: Detect Phase 2 with Phase 3 missing
+      - name: Detect Phase 2 with later phases missing
         run: |
           set -o pipefail
           bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-phase2.log
           grep -q "2 Shared dialogs/forms.*applied" /tmp/status-phase2.log
           grep -q "3 Tables/preview grids.*missing" /tmp/status-phase2.log
+          grep -q "4 Canvas interaction.*missing" /tmp/status-phase2.log
 
-      - name: Upgrade Phase 2 to Phase 3
+      - name: Upgrade Phase 2 to latest UI patch
         run: |
           set -o pipefail
           bash scripts/apply-ui-patch.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-phase2.log
@@ -95,6 +97,48 @@ jobs:
           git -C hop diff --check
           git -C hop diff --binary > /tmp/ui-from-phase2.diff
           cmp /tmp/ui-full.diff /tmp/ui-from-phase2.diff
+
+      - name: Create legacy state-v3 Phase 3 checkout
+        run: |
+          set -o pipefail
+          git -C hop reset --hard HEAD
+          git -C hop clean -fd
+          rm -f hop/.git/hop-ui-patch-state.json
+          python3 scripts/patch_manager.py apply "$GITHUB_WORKSPACE/hop" --through 3 2>&1 | tee /tmp/apply-phase3.log
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          state_path = Path("hop/.git/hop-ui-patch-state.json")
+          state = json.loads(state_path.read_text())
+          state["version"] = 3
+          state["phases"].pop("4", None)
+          for path in (
+              "engine/src/main/java/org/apache/hop/core/gui/BasePainter.java",
+              "engine/src/main/java/org/apache/hop/pipeline/PipelinePainter.java",
+              "engine/src/main/java/org/apache/hop/workflow/WorkflowPainter.java",
+          ):
+              state["files"].pop(path, None)
+          state_path.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n")
+          PY
+
+      - name: Detect and migrate legacy Phase 3 state
+        run: |
+          set -o pipefail
+          bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-phase3.log
+          grep -q "3 Tables/preview grids.*applied" /tmp/status-phase3.log
+          grep -q "4 Canvas interaction.*missing" /tmp/status-phase3.log
+
+      - name: Upgrade Phase 3 to Phase 4
+        run: |
+          set -o pipefail
+          bash scripts/apply-ui-patch.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-phase3.log
+
+      - name: Verify Phase 3 upgrade converges
+        run: |
+          git -C hop diff --check
+          git -C hop diff --binary > /tmp/ui-from-phase3.diff
+          cmp /tmp/ui-full.diff /tmp/ui-from-phase3.diff
 
       - name: Create legacy state-v1 Phase 1 checkout
         run: |
@@ -158,6 +202,9 @@ jobs:
             /tmp/apply-phase2.log
             /tmp/status-phase2.log
             /tmp/upgrade-phase2.log
+            /tmp/apply-phase3.log
+            /tmp/status-phase3.log
+            /tmp/upgrade-phase3.log
             /tmp/upgrade-state-v1.log
             /tmp/unknown-change.log
 
