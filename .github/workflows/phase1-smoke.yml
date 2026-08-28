@@ -62,11 +62,36 @@ jobs:
           set -o pipefail
           bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-1a.log
 
-      - name: Verify legacy upgrade converges to full Phase 1
+      - name: Verify Phase 1A upgrade converges to full Phase 1
         run: |
           git -C hop diff --check
           git -C hop diff --binary > /tmp/phase1-from-1a.diff
           cmp /tmp/phase1-full.diff /tmp/phase1-from-1a.diff
+
+      - name: Create legacy Phase 1A+1B checkout
+        run: |
+          set -o pipefail
+          git -C hop reset --hard HEAD
+          git -C hop clean -fd
+          rm -f hop/.git/hop-ui-patch-state.json
+          python3 scripts/apply_phase1a.py "$GITHUB_WORKSPACE/hop"
+          python3 scripts/apply_phase1b.py "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-1b.log
+
+      - name: Detect legacy Phase 1A+1B state
+        run: |
+          set -o pipefail
+          bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-1b.log
+
+      - name: Upgrade legacy Phase 1A+1B state
+        run: |
+          set -o pipefail
+          bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-1b.log
+
+      - name: Verify Phase 1B upgrade converges to full Phase 1
+        run: |
+          git -C hop diff --check
+          git -C hop diff --binary > /tmp/phase1-from-1b.diff
+          cmp /tmp/phase1-full.diff /tmp/phase1-from-1b.diff
 
       - name: Reject unknown local changes
         run: |
@@ -89,6 +114,9 @@ jobs:
             /tmp/apply-1a.log
             /tmp/status-1a.log
             /tmp/upgrade-1a.log
+            /tmp/apply-1b.log
+            /tmp/status-1b.log
+            /tmp/upgrade-1b.log
             /tmp/unknown-change.log
 
   build:
