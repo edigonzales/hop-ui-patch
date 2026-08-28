@@ -19,8 +19,11 @@ CANVAS_PALETTE = "engine/src/main/java/org/apache/hop/core/gui/CanvasColorPalett
 HOP_GUI = "ui/src/main/java/org/apache/hop/ui/hopgui/HopGui.java"
 GUI_TOOLBAR = "ui/src/main/java/org/apache/hop/ui/core/gui/GuiToolbarWidgets.java"
 TABLE_VIEW = "ui/src/main/java/org/apache/hop/ui/core/widget/TableView.java"
+BASE_PAINTER = "engine/src/main/java/org/apache/hop/core/gui/BasePainter.java"
+PIPELINE_PAINTER = "engine/src/main/java/org/apache/hop/pipeline/PipelinePainter.java"
+WORKFLOW_PAINTER = "engine/src/main/java/org/apache/hop/workflow/WorkflowPainter.java"
 
-PHASE_ORDER = ("1A", "1B", "1C", "3")
+PHASE_ORDER = ("1A", "1B", "1C", "3", "4")
 
 KNOWN_PATHS = (
     THEME,
@@ -30,12 +33,16 @@ KNOWN_PATHS = (
     HOP_GUI,
     GUI_TOOLBAR,
     TABLE_VIEW,
+    BASE_PAINTER,
+    PIPELINE_PAINTER,
+    WORKFLOW_PAINTER,
 )
 PHASE_PATHS = {
     "1A": {THEME, GUI_RESOURCE, PROPS_UI, CANVAS_PALETTE},
     "1B": {THEME, HOP_GUI},
     "1C": {THEME, HOP_GUI, GUI_TOOLBAR},
     "3": {THEME, TABLE_VIEW},
+    "4": {BASE_PAINTER, PIPELINE_PAINTER, WORKFLOW_PAINTER},
 }
 
 PHASE_MARKERS = {
@@ -65,6 +72,22 @@ PHASE_MARKERS = {
             "SWT.FLAT | SWT.WRAP | SWT.LEFT | SWT.HORIZONTAL",
             "HopUiTheme.TABLE_INDEX_COLUMN_WIDTH",
             "HopUiTheme.TABLE_TOOLBAR_GAP",
+        ),
+    },
+    "4": {
+        BASE_PAINTER: (
+            "protected void drawNodeSelectionSurface(",
+            "protected void drawNameHoverSurface(",
+            "gc.setAlpha(38);",
+            "gc.setForeground(EColor.HOP_DEFAULT);",
+        ),
+        PIPELINE_PAINTER: (
+            "drawNodeSelectionSurface(x, y, iconSize, iconSize);",
+            "gc.setFont(nameHovered ? EFont.GRAPH_BOLD : EFont.GRAPH);",
+        ),
+        WORKFLOW_PAINTER: (
+            "drawNodeSelectionSurface(x, y, iconSize, iconSize);",
+            "drawNameHoverSurface(xPos - 5, yPos - 2, nameExtent.x + 10, nameExtent.y + 6);",
         ),
     },
 }
