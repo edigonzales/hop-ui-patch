@@ -2,7 +2,7 @@
 
 Experimental UI modernization patch set for Apache Hop Desktop (SWT).
 
-The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement, flatter native toolbars, shared dialog/form styling and quieter shared tables.
+The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement, flatter native toolbars, shared dialog/form styling, quieter shared tables and clearer canvas interaction feedback.
 
 ## Implemented phases
 
@@ -41,6 +41,17 @@ The project deliberately avoids a Hop fork. It keeps the changes small, reviewab
 
 See `docs/phase2-3-plan.md` for the Phase 2/3 scope and non-goals.
 
+### Phase 4 — canvas interaction feedback
+
+- selected pipeline transforms and workflow actions get a restrained halo outside the existing status border;
+- transform/action name hover is consistent on Desktop and Hop Web: subtle surface plus bold graph font;
+- the old desktop-only hover underline is removed;
+- lasso selection uses a low-alpha fill and dashed Hop accent border instead of an outline-only DASHDOT rectangle;
+- context actions, shortcuts, drag/drop, hop creation, hit testing and selection rules remain unchanged;
+- engine painters stay independent from the SWT/UI theme module by using the existing `IGc.EColor` palette.
+
+See `docs/phase4-canvas.md` for the Phase 4 design boundaries.
+
 ## Upstream
 
 The patch targets **Apache Hop 2.19.0** and is pinned to the release source commit:
@@ -57,16 +68,17 @@ From a checkout of this repository:
 bash scripts/apply-ui-patch.sh /path/to/apache-hop
 ```
 
-The command is idempotent. It detects every managed phase independently, skips phases that are already present and applies only the missing phases. Existing Phase 1 or Phase 2 checkouts can therefore be upgraded directly to the latest patch set.
+The command is idempotent. It detects every managed phase independently, skips phases that are already present and applies only the missing phases. Existing Phase 1, Phase 2 or Phase 3 checkouts can therefore be upgraded directly to the latest patch set.
 
-Example on a Phase 2 checkout:
+Example on a Phase 3 checkout:
 
 ```text
 1A: already applied, skipping.
 1B: already applied, skipping.
 1C: already applied, skipping.
 2: already applied, skipping.
-Applying 3...
+3: already applied, skipping.
+Applying 4...
 ```
 
 The manager is deliberately conservative. It refuses:
@@ -101,7 +113,8 @@ UI patch:
   1B Perspective rail     ✓ applied
   1C Toolbar              ✓ applied
    2 Shared dialogs/forms ✓ applied
-   3 Tables/preview grids · missing
+   3 Tables/preview grids ✓ applied
+   4 Canvas interaction   · missing
 ```
 
 ## Build
@@ -119,4 +132,4 @@ cd /path/to/apache-hop
 
 See `docs/design.md`. The goal is not a web-style skin or custom SWT widget framework. The target is a cleaner native desktop IDE: quieter surfaces, clearer hierarchy, fewer borders, consistent spacing and restrained use of accent colors.
 
-Phase 4 is intentionally not part of this change set; canvas interactions and context menus should be evaluated separately after the shared dialog/table foundations are visually tested.
+Phase 4 deliberately stops at visual interaction feedback. Changes to context actions, canvas gestures or other interaction semantics should remain separate and be evaluated only after the visual patch has been tested in daily use.
