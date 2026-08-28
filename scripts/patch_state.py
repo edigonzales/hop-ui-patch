@@ -9,9 +9,9 @@ import subprocess
 from pathlib import Path
 
 UPSTREAM = "46436154ae1a1e940861d485559819360c2af86e"
-STATE_VERSION = 3
+STATE_VERSION = 4
 STATE_FILENAME = "hop-ui-patch-state.json"
-PHASE_ORDER = ("1A", "1B", "1C", "2", "3")
+PHASE_ORDER = ("1A", "1B", "1C", "2", "3", "4")
 
 THEME = "ui/src/main/java/org/apache/hop/ui/core/gui/HopUiTheme.java"
 GUI_RESOURCE = "ui/src/main/java/org/apache/hop/ui/core/gui/GuiResource.java"
@@ -25,6 +25,9 @@ LABEL_TEXT_VAR = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelTextVar.ja
 LABEL_COMBO = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelCombo.java"
 LABEL_COMBO_VAR = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelComboVar.java"
 TABLE_VIEW = "ui/src/main/java/org/apache/hop/ui/core/widget/TableView.java"
+BASE_PAINTER = "engine/src/main/java/org/apache/hop/core/gui/BasePainter.java"
+PIPELINE_PAINTER = "engine/src/main/java/org/apache/hop/pipeline/PipelinePainter.java"
+WORKFLOW_PAINTER = "engine/src/main/java/org/apache/hop/workflow/WorkflowPainter.java"
 
 KNOWN_PATHS = (
     THEME,
@@ -39,6 +42,9 @@ KNOWN_PATHS = (
     LABEL_COMBO,
     LABEL_COMBO_VAR,
     TABLE_VIEW,
+    BASE_PAINTER,
+    PIPELINE_PAINTER,
+    WORKFLOW_PAINTER,
 )
 
 PHASE_PATHS = {
@@ -47,6 +53,7 @@ PHASE_PATHS = {
     "1C": {THEME, HOP_GUI, GUI_TOOLBAR},
     "2": {THEME, BASE_DIALOG, LABEL_TEXT, LABEL_TEXT_VAR, LABEL_COMBO, LABEL_COMBO_VAR},
     "3": {THEME, TABLE_VIEW},
+    "4": {BASE_PAINTER, PIPELINE_PAINTER, WORKFLOW_PAINTER},
 }
 
 PHASE_MARKERS = {
@@ -86,6 +93,22 @@ PHASE_MARKERS = {
             "SWT.MULTI | SWT.FULL_SELECTION",
             "HopUiTheme.TABLE_GRID_LINES_VISIBLE",
             "HopUiTheme.TABLE_INDEX_COLUMN_WIDTH",
+        ),
+    },
+    "4": {
+        BASE_PAINTER: (
+            "protected void drawNodeSelectionSurface(",
+            "protected void drawNameHoverSurface(",
+            "gc.setAlpha(38);",
+            "gc.setForeground(EColor.HOP_DEFAULT);",
+        ),
+        PIPELINE_PAINTER: (
+            "drawNodeSelectionSurface(x, y, iconSize, iconSize);",
+            "gc.setFont(nameHovered ? EFont.GRAPH_BOLD : EFont.GRAPH);",
+        ),
+        WORKFLOW_PAINTER: (
+            "drawNodeSelectionSurface(x, y, iconSize, iconSize);",
+            "drawNameHoverSurface(xPos - 5, yPos - 2, nameExtent.x + 10, nameExtent.y + 6);",
         ),
     },
 }
