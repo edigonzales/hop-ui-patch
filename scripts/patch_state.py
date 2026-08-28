@@ -102,11 +102,18 @@ def detect_phases(hop: Path) -> dict[str, str]:
 
 
 def dirty_paths(hop: Path) -> set[str]:
-    output = git(hop, "status", "--porcelain", "--untracked-files=all")
+    # Do not pass porcelain output through git(), whose .strip() would remove the leading
+    # whitespace of entries such as " M engine/..." and corrupt the path ("engine" -> "ngine").
+    output = subprocess.check_output(
+        ["git", "-C", str(hop), "status", "--porcelain", "--untracked-files=all"],
+        text=True,
+    )
     if not output:
         return set()
     paths: set[str] = set()
     for line in output.splitlines():
+        if len(line) < 4:
+            continue
         path = line[3:]
         if " -> " in path:
             path = path.split(" -> ", 1)[1]
