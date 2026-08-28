@@ -41,6 +41,11 @@ public final class HopUiTheme {
   public static final int DIALOG_ELEMENT_GAP = 8;
   public static final int FORM_LABEL_GAP = 8;
 
+  // Shared tables and preview grids. Native SWT selection/header rendering remains intact; removing
+  // permanent cell rules reduces visual noise without changing editing or keyboard behavior.
+  public static final boolean TABLE_GRID_LINES_VISIBLE = false;
+  public static final int TABLE_INDEX_COLUMN_WIDTH = 30;
+
   public static RGB applicationBackground(boolean darkMode) {
     return darkMode ? rgb(35, 35, 35) : rgb(255, 255, 255);
   }
