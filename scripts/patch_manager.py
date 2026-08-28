@@ -24,6 +24,7 @@ PHASE_SCRIPTS = {
     "1C": "apply_phase1c.py",
     "2": "apply_phase2.py",
     "3": "apply_phase3.py",
+    "4": "apply_phase4.py",
 }
 
 PHASE_LABELS = {
@@ -32,6 +33,7 @@ PHASE_LABELS = {
     "1C": "Toolbar",
     "2": "Shared dialogs/forms",
     "3": "Tables/preview grids",
+    "4": "Canvas interaction",
 }
 
 
