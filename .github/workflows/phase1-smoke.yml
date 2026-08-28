@@ -27,7 +27,14 @@ jobs:
           cache: maven
 
       - name: Apply Phase 1A-1C from clean checkout
-        run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop"
+        run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-phase1.log
+
+      - name: Upload patch-manager diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patch-manager-diagnostics
+          path: /tmp/apply-phase1.log
 
       - name: Check status and resulting diff
         run: |
