@@ -1,4 +1,4 @@
-name: Phase 1 smoke test
+name: UI patch smoke test
 
 on:
   push:
@@ -19,56 +19,45 @@ jobs:
           ref: 46436154ae1a1e940861d485559819360c2af86e
           path: hop
 
-      - name: Apply Phase 1A-1C from clean checkout
+      - name: Apply through Phase 3 from clean checkout
         run: |
           set -o pipefail
-          bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-clean.log
+          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-clean.log
 
       - name: Check managed patch status
         run: |
           set -o pipefail
           bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-full.log
 
-      - name: Save and validate resulting diff
+      - name: Save and validate current full diff
         run: |
           git -C hop diff --check
-          git -C hop diff --binary > /tmp/phase1-full.diff
+          git -C hop diff --binary > /tmp/current-full.diff
 
-      - name: Reapply Phase 1
+      - name: Reapply through Phase 3
         run: |
           set -o pipefail
-          bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/reapply.log
+          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/reapply.log
 
       - name: Verify repeated apply changed nothing
         run: |
-          git -C hop diff --binary > /tmp/phase1-second.diff
-          cmp /tmp/phase1-full.diff /tmp/phase1-second.diff
+          git -C hop diff --binary > /tmp/current-second.diff
+          cmp /tmp/current-full.diff /tmp/current-second.diff
 
-      - name: Create legacy Phase 1A-only checkout
+      - name: Upgrade from legacy Phase 1A-only checkout
         run: |
           set -o pipefail
           git -C hop reset --hard HEAD
           git -C hop clean -fd
           rm -f hop/.git/hop-ui-patch-state.json
           python3 scripts/apply_phase1a.py "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-1a.log
-
-      - name: Detect legacy Phase 1A-only state
-        run: |
-          set -o pipefail
           bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-1a.log
-
-      - name: Upgrade legacy Phase 1A-only state
-        run: |
-          set -o pipefail
-          bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-1a.log
-
-      - name: Verify Phase 1A upgrade converges to full Phase 1
-        run: |
+          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-1a.log
           git -C hop diff --check
-          git -C hop diff --binary > /tmp/phase1-from-1a.diff
-          cmp /tmp/phase1-full.diff /tmp/phase1-from-1a.diff
+          git -C hop diff --binary > /tmp/from-1a.diff
+          cmp /tmp/current-full.diff /tmp/from-1a.diff
 
-      - name: Create legacy Phase 1A+1B checkout
+      - name: Upgrade from legacy Phase 1A+1B checkout
         run: |
           set -o pipefail
           git -C hop reset --hard HEAD
@@ -76,28 +65,29 @@ jobs:
           rm -f hop/.git/hop-ui-patch-state.json
           python3 scripts/apply_phase1a.py "$GITHUB_WORKSPACE/hop"
           python3 scripts/apply_phase1b.py "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-1b.log
-
-      - name: Detect legacy Phase 1A+1B state
-        run: |
-          set -o pipefail
           bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-1b.log
+          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-1b.log
+          git -C hop diff --check
+          git -C hop diff --binary > /tmp/from-1b.diff
+          cmp /tmp/current-full.diff /tmp/from-1b.diff
 
-      - name: Upgrade legacy Phase 1A+1B state
+      - name: Upgrade from complete Phase 1 checkout
         run: |
           set -o pipefail
-          bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-1b.log
-
-      - name: Verify Phase 1B upgrade converges to full Phase 1
-        run: |
+          git -C hop reset --hard HEAD
+          git -C hop clean -fd
+          rm -f hop/.git/hop-ui-patch-state.json
+          bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-phase1.log
+          bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-phase1.log
           git -C hop diff --check
-          git -C hop diff --binary > /tmp/phase1-from-1b.diff
-          cmp /tmp/phase1-full.diff /tmp/phase1-from-1b.diff
+          git -C hop diff --binary > /tmp/from-phase1.diff
+          cmp /tmp/current-full.diff /tmp/from-phase1.diff
 
       - name: Reject unknown local changes
         run: |
           set -o pipefail
           printf '\nunknown local edit\n' >> hop/README.md
-          if bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/unknown-change.log; then
+          if bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/unknown-change.log; then
             echo "Patch manager unexpectedly accepted an unknown local change"
             exit 1
           fi
@@ -117,6 +107,8 @@ jobs:
             /tmp/apply-1b.log
             /tmp/status-1b.log
             /tmp/upgrade-1b.log
+            /tmp/apply-phase1.log
+            /tmp/upgrade-phase1.log
             /tmp/unknown-change.log
 
   build:
@@ -140,8 +132,8 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Apply Phase 1A-1C
-        run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop"
+      - name: Apply through Phase 3
+        run: bash scripts/apply-phase3.sh "$GITHUB_WORKSPACE/hop"
 
       - name: Build affected modules
         working-directory: hop
