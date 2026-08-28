@@ -29,19 +29,23 @@ jobs:
       - name: Apply Phase 1A-1C from clean checkout
         run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-phase1.log
 
+      - name: Check managed patch status
+        run: bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-phase1.log
+
+      - name: Check resulting diff
+        run: |
+          git -C hop diff --check
+          git -C hop diff --binary > /tmp/phase1-full.diff
+          git -C hop diff --stat
+
       - name: Upload patch-manager diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: patch-manager-diagnostics
-          path: /tmp/apply-phase1.log
-
-      - name: Check status and resulting diff
-        run: |
-          bash scripts/status.sh "$GITHUB_WORKSPACE/hop"
-          git -C hop diff --check
-          git -C hop diff --binary > /tmp/phase1-full.diff
-          git -C hop diff --stat
+          path: |
+            /tmp/apply-phase1.log
+            /tmp/status-phase1.log
 
       - name: Verify repeated apply is a no-op
         run: |
