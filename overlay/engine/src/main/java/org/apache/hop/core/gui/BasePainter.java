@@ -1,0 +1,822 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.hop.core.gui;
+
+import java.util.ArrayList;
+import java.util.List;
+import lombok.Getter;
+import lombok.Setter;
+import org.apache.hop.base.AbstractMeta;
+import org.apache.hop.base.BaseHopMeta;
+import org.apache.hop.base.IBaseMeta;
+import org.apache.hop.core.Const;
+import org.apache.hop.core.NotePadMeta;
+import org.apache.hop.core.NotePadType;
+import org.apache.hop.core.exception.HopException;
+import org.apache.hop.core.gui.AreaOwner.AreaType;
+import org.apache.hop.core.gui.IGc.EColor;
+import org.apache.hop.core.gui.IGc.EFont;
+import org.apache.hop.core.gui.IGc.EImage;
+import org.apache.hop.core.gui.IGc.ELineStyle;
+import org.apache.hop.core.gui.markdown.MarkdownNoteRenderer;
+import org.apache.hop.core.gui.markdown.MarkdownNoteRenderer.PositionedLink;
+import org.apache.hop.core.gui.markdown.NoteLinkHit;
+import org.apache.hop.core.util.Utils;
+import org.apache.hop.core.variables.IVariables;
+import org.apache.hop.i18n.BaseMessages;
+import org.apache.hop.metadata.api.IHopMetadataProvider;
+import org.apache.hop.pipeline.transform.stream.StreamIcon;
+
+@Getter
+@Setter
+public abstract class BasePainter<H extends BaseHopMeta<?>, P extends IBaseMeta> {
+
+  private static final Class<?> PKG = BasePainter.class;
+
+  public final double theta = Math.toRadians(11); // arrowhead sharpness
+
+  public static final int MINI_ICON_MARGIN = 5;
+  public static final int CORNER_RADIUS_5 = 10;
+
+  protected boolean drawingBorderAroundName;
+
+  protected double zoomFactor;
+
+  protected Point area;
+
+  protected List<AreaOwner> areaOwners;
+
+  protected DPoint offset;
+  protected int iconSize;
+  protected int miniIconSize;
+  protected int gridSize;
+  protected Rectangle selectionRectangle;
+  protected int lineWidth;
+  protected float magnification;
+
+  protected Object subject;
+  protected IVariables variables;
+
+  protected IGc gc;
+
+  private String noteFontName;
+
+  private int noteFontHeight;
+
+  protected H candidate;
+
+  protected Point maximum;
+  protected boolean showingNavigationView;
+  protected float screenMagnification;
+  protected Rectangle graphPort;
+  protected Rectangle viewPort;
+  protected String mouseOverName;
+
+  /** Hovered Markdown note hyperlink (for underline emphasis). */
+  protected NoteLinkHit mouseOverNoteLink;
+
+  private static final int NOTE_ICON_SIZE = 16;
+  private static final int NOTE_ICON_TEXT_GAP = 6;
+
+  /**
+   * When true, draw the origin boundary (dashed lines, hatching, and label). Should be set from the
+   * UI based on "Enable infinite move" (only show when infinite move is enabled).
+   */
+  protected boolean showOriginBoundary;
+
+  /** In case we want to use metadata objects to help with drawing on the pipeline or workflow */
+  protected IHopMetadataProvider metadataProvider;
+
+  public BasePainter(
+      IGc gc,
+      IVariables variables,
+      Object subject,
+      Point area,
+      DPoint offset,
+      Rectangle selectionRectangle,
+      List<AreaOwner> areaOwners,
+      int iconSize,
+      int lineWidth,
+      int gridSize,
+      String noteFontName,
+      int noteFontHeight,
+      double zoomFactor,
+      boolean drawingBorderAroundName,
+      String mouseOverName) {
+    this.gc = gc;
+    this.variables = variables;
+    this.subject = subject;
+    this.area = area;
+    this.offset = offset;
+
+    this.selectionRectangle = selectionRectangle;
+
+    this.areaOwners = areaOwners;
+    areaOwners.clear(); // clear it before we start filling it up again.
+
+    this.iconSize = iconSize;
+    this.miniIconSize = iconSize / 2;
+    this.lineWidth = lineWidth;
+    this.gridSize = gridSize;
+
+    this.magnification = 1.0f;
+    this.zoomFactor = zoomFactor;
+    this.drawingBorderAroundName = drawingBorderAroundName;
+
+    gc.setAntialias(true);
+
+    this.noteFontName = noteFontName;
+    this.noteFontHeight = noteFontHeight;
+
+    this.screenMagnification = 1.0f;
+    this.mouseOverName = mouseOverName;
+  }
+
+  /** Hop Web renders pipeline/workflow graphs with {@link SvgGc}; desktop uses SWT. */
+  protected boolean isWebCanvasRendering() {
+    return gc instanceof SvgGc;
+  }
+
+  /**
+   * Draw a restrained selection halo around a graph node without changing the node's own status
+   * border. Using the existing EColor palette keeps engine/UI module boundaries intact.
+   */
+  protected void drawNodeSelectionSurface(int x, int y, int width, int height) {
+    int inset = Math.max(4, lineWidth + 2);
+    int previousAlpha = gc.getAlpha();
+
+    gc.setAlpha(64);
+    gc.setBackground(EColor.LIGHTBLUE);
+    gc.fillRoundRectangle(
+        x - inset, y - inset, width + 2 * inset, height + 2 * inset, 12, 12);
+
+    gc.setAlpha(previousAlpha);
+    gc.setForeground(EColor.HOP_DEFAULT);
+    gc.setLineWidth(Math.max(1, lineWidth + 1));
+    gc.drawRoundRectangle(
+        x - inset, y - inset, width + 2 * inset, height + 2 * inset, 12, 12);
+    gc.setLineWidth(lineWidth);
+  }
+
+  /** Subtle hover surface behind a transform/action name; text is drawn by the caller. */
+  protected void drawNameHoverSurface(int x, int y, int width, int height) {
+    int previousAlpha = gc.getAlpha();
+    gc.setAlpha(105);
+    gc.setBackground(EColor.LIGHTGRAY);
+    gc.fillRoundRectangle(x, y, width, height, 8, 8);
+    gc.setAlpha(previousAlpha);
+  }
+
+  public static EImage getStreamIconImage(StreamIcon streamIcon, boolean enabled) {
+    return switch (streamIcon) {
+      case TRUE -> (enabled) ? EImage.TRUE : EImage.TRUE_DISABLED;
+      case FALSE -> (enabled) ? EImage.FALSE : EImage.FALSE_DISABLED;
+      case ERROR -> (enabled) ? EImage.ERROR : EImage.ERROR_DISABLED;
+      case INFO -> (enabled) ? EImage.INFO : EImage.INFO_DISABLED;
+      case TARGET -> (enabled) ? EImage.TARGET : EImage.TARGET_DISABLED;
+      case INPUT -> EImage.INPUT;
+      case OUTPUT -> EImage.OUTPUT;
+      default -> EImage.ARROW_DEFAULT;
+    };
+  }
+
+  protected Point calculateMinimumSize(NotePadMeta note) {
+    if (Utils.isEmpty(note.getNote())) {
+      return new Point(20, 20); // Empty note
+    }
+
+    if (note.isMarkdown()) {
+      return calculateMarkdownMinimumSize(note);
+    }
+
+    int fontHeight;
+    if (note.getFontSize() > 0) {
+      fontHeight = note.getFontSize();
+    } else {
+      fontHeight = noteFontHeight;
+    }
+    gc.setFont(
+        Const.NVL(note.getFontName(), noteFontName),
+        (int) (fontHeight / zoomFactor),
+        note.isFontBold(),
+        note.isFontItalic());
+
+    Point size = gc.textExtent(note.getNote());
+    size.x += 2 * Const.NOTE_MARGIN;
+    size.y += 2 * Const.NOTE_MARGIN;
+
+    return size;
+  }
+
+  /**
+   * Base font size for Markdown notes on the canvas. Reads the actual point size of {@link
+   * EFont#GRAPH} (transform/action name font) so body text matches graph labels exactly under the
+   * same canvas magnification. Falls back to note-font / zoom when the GC cannot report size.
+   *
+   * <p>Do not clamp this value upward: on HiDPI the graph font is intentionally only a few points
+   * after zoom compensation.
+   */
+  private int markdownBaseFontSize() {
+    gc.setFont(EFont.GRAPH);
+    int graphHeight = gc.getFontHeight();
+    if (graphHeight > 0) {
+      return graphHeight;
+    }
+    // Fallback: same compensation plain notes use (height / zoomFactor)
+    int raw = noteFontHeight > 0 ? noteFontHeight : 10;
+    double z = zoomFactor > 0 ? zoomFactor : 1.0;
+    return Math.max(1, (int) Math.round(raw / z));
+  }
+
+  /** Host pipeline/workflow filename for resolving relative Markdown image paths. */
+  private String noteImageBaseFilename() {
+    if (subject instanceof AbstractMeta meta) {
+      return meta.getFilename();
+    }
+    return null;
+  }
+
+  /**
+   * Minimum size for Markdown notes used by resize handles.
+   *
+   * <p>Width is a small fixed floor so the user can shrink the note and reflow text. (Using the
+   * full laid-out content width as minimum prevented narrowing.) Height is measured by wrapping at
+   * the current note width so vertical space tracks reflow.
+   */
+  private Point calculateMarkdownMinimumSize(NotePadMeta note) {
+    int margin = Const.NOTE_MARGIN;
+    NotePadType type = note.getNoteType() != null ? note.getNoteType() : NotePadType.GENERAL;
+    int textIndent = NotePadStyle.icon(type) != null ? NOTE_ICON_SIZE + NOTE_ICON_TEXT_GAP : 0;
+
+    // Allow narrowing well below default note width; content reflows (wraps) instead.
+    final int minContentWidth = 40;
+    int minWidth = 2 * margin + textIndent + minContentWidth;
+
+    float savedMag = magnification;
+    gc.setTransform(0.0f, 0.0f, 1.0f);
+    try {
+      int availableContent =
+          note.getWidth() > 0
+              ? Math.max(minContentWidth, note.getWidth() - 2 * margin - textIndent)
+              : minContentWidth;
+      MarkdownNoteRenderer.LayoutResult layout =
+          MarkdownNoteRenderer.measure(
+              gc,
+              note,
+              Const.NVL(noteFontName, "Sans"),
+              markdownBaseFontSize(),
+              availableContent,
+              noteImageBaseFilename(),
+              variables);
+      int contentH =
+          Math.max(NotePadStyle.icon(type) != null ? NOTE_ICON_SIZE : 0, layout.height());
+      return new Point(minWidth, 2 * margin + contentH);
+    } finally {
+      gc.setTransform((float) offset.x, (float) offset.y, savedMag);
+    }
+  }
+
+  protected void drawNote(NotePadMeta noteMeta) {
+    if (noteMeta.isMarkdown()) {
+      drawMarkdownNote(noteMeta);
+      return;
+    }
+
+    if (noteMeta.isSelected()) {
+      gc.setLineWidth(2);
+    } else {
+      gc.setLineWidth(1);
+    }
+
+    Point minimumSize = this.calculateMinimumSize(noteMeta);
+
+    // Cache the minimum size for resize operation
+    noteMeta.setMinimumWidth(minimumSize.x);
+    noteMeta.setMinimumHeight(minimumSize.y);
+
+    Point loc = noteMeta.getLocation();
+    Point note = real2screen(loc.x, loc.y);
+
+    int width = noteMeta.width;
+    int height = noteMeta.height;
+    if (minimumSize.x > width) {
+      width = minimumSize.x;
+    }
+    if (minimumSize.y > height) {
+      height = minimumSize.y;
+    }
+    Rectangle noteShape = new Rectangle(note.x, note.y, width, height);
+
+    gc.setBackground(
+        noteMeta.getBackGroundColorRed(),
+        noteMeta.getBackGroundColorGreen(),
+        noteMeta.getBackGroundColorBlue());
+    gc.setForeground(
+        noteMeta.getBorderColorRed(),
+        noteMeta.getBorderColorGreen(),
+        noteMeta.getBorderColorBlue());
+
+    // Radius is half the font height
+    //
+    int radius = (int) Math.round(zoomFactor * 8);
+
+    gc.fillRoundRectangle(
+        noteShape.x, noteShape.y, noteShape.width, noteShape.height, radius, radius);
+    gc.drawRoundRectangle(
+        noteShape.x, noteShape.y, noteShape.width, noteShape.height, radius, radius);
+
+    if (!Utils.isEmpty(noteMeta.getNote())) {
+      gc.setForeground(
+          noteMeta.getFontColorRed(), noteMeta.getFontColorGreen(), noteMeta.getFontColorBlue());
+      gc.drawText(noteMeta.getNote(), note.x + Const.NOTE_MARGIN, note.y + Const.NOTE_MARGIN, true);
+    }
+
+    // Add to the list of areas...
+    //
+    areaOwners.add(
+        new AreaOwner(
+            AreaType.NOTE,
+            noteShape.x,
+            noteShape.y,
+            noteShape.width,
+            noteShape.height,
+            offset,
+            subject,
+            noteMeta));
+  }
+
+  private void drawMarkdownNote(NotePadMeta noteMeta) {
+    NotePadType type =
+        noteMeta.getNoteType() != null ? noteMeta.getNoteType() : NotePadType.GENERAL;
+    NotePadStyle.RgbColor bg = NotePadStyle.backgroundColor(type);
+    NotePadStyle.RgbColor border = NotePadStyle.borderColor(type);
+
+    Point minimumSize = calculateMinimumSize(noteMeta);
+    noteMeta.setMinimumWidth(minimumSize.x);
+    noteMeta.setMinimumHeight(minimumSize.y);
+
+    Point loc = noteMeta.getLocation();
+    Point notePos = real2screen(loc.x, loc.y);
+
+    int width = noteMeta.width;
+    int height = noteMeta.height;
+    if (minimumSize.x > width) {
+      width = minimumSize.x;
+    }
+    if (minimumSize.y > height) {
+      height = minimumSize.y;
+    }
+    Rectangle noteShape = new Rectangle(notePos.x, notePos.y, width, height);
+    int radius = (int) Math.round(zoomFactor * 8);
+
+    gc.setBackground(bg.red(), bg.green(), bg.blue());
+    gc.setForeground(border.red(), border.green(), border.blue());
+    gc.setLineWidth(NotePadStyle.borderWidth(type, noteMeta.isSelected()));
+    gc.fillRoundRectangle(
+        noteShape.x, noteShape.y, noteShape.width, noteShape.height, radius, radius);
+    gc.drawRoundRectangle(
+        noteShape.x, noteShape.y, noteShape.width, noteShape.height, radius, radius);
+    gc.setLineWidth(1);
+
+    areaOwners.add(
+        new AreaOwner(
+            AreaType.NOTE,
+            noteShape.x,
+            noteShape.y,
+            noteShape.width,
+            noteShape.height,
+            offset,
+            subject,
+            noteMeta));
+
+    int contentX = noteShape.x + Const.NOTE_MARGIN;
+    int contentY = noteShape.y + Const.NOTE_MARGIN;
+    int textX = contentX;
+    int textY = contentY;
+
+    EImage icon = NotePadStyle.icon(type);
+    if (icon != null) {
+      try {
+        gc.drawImage(icon, contentX, contentY, 1.0f);
+      } catch (Exception ignored) {
+        // optional decoration
+      }
+      textX = contentX + NOTE_ICON_SIZE + NOTE_ICON_TEXT_GAP;
+    }
+
+    int contentWidth = Math.max(20, noteShape.width - Const.NOTE_MARGIN - (textX - noteShape.x));
+    List<PositionedLink> positionedLinks = new ArrayList<>();
+    MarkdownNoteRenderer.paintWithLinkBounds(
+        gc,
+        noteMeta,
+        Const.NVL(noteFontName, "Sans"),
+        markdownBaseFontSize(),
+        textX,
+        textY,
+        contentWidth,
+        mouseOverNoteLink,
+        positionedLinks,
+        noteImageBaseFilename(),
+        variables);
+
+    for (PositionedLink pl : positionedLinks) {
+      int pad = 1;
+      areaOwners.add(
+          new AreaOwner(
+              AreaType.NOTE_LINK,
+              pl.x() - pad,
+              pl.y() - pad,
+              pl.width() + 2 * pad,
+              pl.height() + 2 * pad,
+              offset,
+              noteMeta,
+              pl.hit()));
+    }
+  }
+
+  protected Point real2screen(int x, int y) {
+    return new Point((int) (x + offset.x), (int) (y + offset.y));
+  }
+
+  protected Point magnifyPoint(Point p) {
+    return new Point(Math.round(p.x * magnification), Math.round(p.y * magnification));
+  }
+
+  protected void drawRect(Rectangle rect) {
+    if (rect == null) {
+      return;
+    }
+
+    // SWT on Windows doesn't cater for negative rect.width/height so normalise first.
+    Point s = real2screen(rect.x, rect.y);
+    if (rect.width < 0) {
+      s.x = s.x + rect.width;
+    }
+    if (rect.height < 0) {
+      s.y = s.y + rect.height;
+    }
+    int width = Math.abs(rect.width);
+    int height = Math.abs(rect.height);
+
+    int previousAlpha = gc.getAlpha();
+    gc.setAlpha(38);
+    gc.setBackground(EColor.LIGHTBLUE);
+    gc.fillRectangle(s.x, s.y, width, height);
+    gc.setAlpha(previousAlpha);
+
+    gc.setLineStyle(ELineStyle.DASH);
+    gc.setLineWidth(Math.max(1, lineWidth));
+    gc.setForeground(EColor.HOP_DEFAULT);
+    gc.drawRectangle(s.x, s.y, width, height);
+    gc.setLineStyle(ELineStyle.SOLID);
+  }
+
+  /**
+   * Maximum grid points to draw; avoids severe slowdown on large/zoomed-out canvases (e.g.
+   * Windows).
+   */
+  private static final int MAX_GRID_POINTS = 10_000;
+
+  protected void drawGrid() {
+    if (area == null || area.x <= 0 || area.y <= 0) {
+      return;
+    }
+    // Grid is drawn at identity transform (screen pixels). offset is in graph units, so a graph
+    // point (gx, gy) maps to screen ((offset.x + gx) * mag, (offset.y + gy) * mag) -- the same
+    // mapping the painter uses for nodes, which are drawn at (offset + location) and scaled by mag.
+    // The pipeline origin (0,0) therefore sits at screen (offset.x * mag, offset.y * mag). We only
+    // draw grid points inside the visible area [0, area.x] x [0, area.y] and in the workable region
+    // (screen x >= origin and y >= origin).
+    float mag = Math.max(0.1f, magnification);
+
+    // Pipeline origin (0,0) in screen pixels. offset is in graph units -> multiply by
+    // magnification.
+    double originScreenX = offset.x * mag;
+    double originScreenY = offset.y * mag;
+
+    // Visible screen bounds clamped to the workable area (no hatched region)
+    int screenMinX = Math.max(0, (int) Math.round(originScreenX));
+    int screenMinY = Math.max(0, (int) Math.round(originScreenY));
+    int screenMaxX = area.x;
+    int screenMaxY = area.y;
+    if (screenMaxX <= screenMinX || screenMaxY <= screenMinY) {
+      return;
+    }
+
+    // Grid step in screen pixels: gridSize graph units * mag pixels/unit
+    // Use double precision throughout to avoid rounding errors on large canvases
+    double step = Math.max(1.0, gridSize * (double) mag);
+
+    // Visible range in screen pixels
+    int rangeX = screenMaxX - screenMinX;
+    int rangeY = screenMaxY - screenMinY;
+
+    // Adjust the step until we are within the limit
+    while ((rangeX / step + 1) * (rangeY / step + 1) > MAX_GRID_POINTS) {
+      step *= 2;
+    }
+
+    // First grid position at or after the visible workable origin, aligned to the graph origin
+    // (grid lines sit at screen position origin + k*step, the same lattice nodes snap to).
+    double startX = originScreenX + Math.ceil((screenMinX - originScreenX) / step) * step;
+    double startY = originScreenY + Math.ceil((screenMinY - originScreenY) / step) * step;
+
+    gc.setForeground(EColor.BLACK);
+
+    // Use double-precision counters in the loop to avoid accumulated rounding errors
+    // when step is large or the canvas is wide (many iterations).
+    for (double x = startX; x < screenMaxX; x += step) {
+      for (double y = startY; y < screenMaxY; y += step) {
+        gc.drawPoint((int) x, (int) y);
+      }
+    }
+  }
+
+  /**
+   * Draws a subtle boundary at the origin (0,0) and hatches the negative coordinate space to
+   * indicate that transforms/actions cannot be created there. Only drawn when showOriginBoundary is
+   * true (e.g. when "Enable infinite move" is on). Same coordinate system as drawGrid (real = graph
+   * + offset).
+   */
+  protected void drawOriginBoundary() {
+    if (!showOriginBoundary) {
+      return;
+    }
+    double visW = area.x / Math.max(0.01, magnification);
+    double visH = area.y / Math.max(0.01, magnification);
+    int ox = (int) Math.round(offset.x);
+    int oy = (int) Math.round(offset.y);
+
+    int alpha = gc.getAlpha();
+    gc.setAlpha(160);
+
+    // Hatch the negative region as an L-shape so the corner is not double-hatched:
+    // 1) Full strip left of origin: [0, ox] x [0, visH]
+    // 2) Top strip above origin only to the right of the left strip: [ox, visW] x [0, oy]
+    if (ox > 0 && oy > 0) {
+      drawHatching(0, 0, ox, (int) visH); // left strip (full height)
+      int topW = (int) visW - ox;
+      if (topW > 0 && oy > 0) {
+        drawHatching(ox, 0, topW, oy); // top strip (no overlap)
+      }
+    } else if (ox > 0 && ox < visW) {
+      drawHatching(0, 0, ox, (int) visH);
+    } else if (oy > 0 && oy < visH) {
+      drawHatching(0, 0, (int) visW, oy);
+    }
+
+    gc.setAlpha(alpha);
+
+    // Dashed border on top of the hatching: only the positive side of the axes (actionable area),
+    // so the line does not extend into the negative/hatched region
+    gc.setForeground(EColor.BLACK);
+    gc.setLineWidth(1);
+    gc.setLineStyle(ELineStyle.DASH);
+
+    if (ox >= 0 && ox <= visW && oy <= visH) {
+      gc.drawLine(ox, oy, ox, (int) visH); // vertical segment from origin downward
+    }
+    if (oy >= 0 && oy <= visH && ox <= visW) {
+      gc.drawLine(ox, oy, (int) visW, oy); // horizontal segment from origin rightward
+    }
+
+    gc.setLineStyle(ELineStyle.SOLID);
+
+    // "Outside workable area" label on the x-axis and y-axis (both normal/horizontal)
+    String originBoundaryLabel = BaseMessages.getString(PKG, "BasePainter.OutsideWorkableArea");
+    if (originBoundaryLabel != null && !originBoundaryLabel.isEmpty()) {
+      gc.setForeground(EColor.DARKGRAY);
+      gc.setFont(EFont.SMALL);
+      Point textSize = gc.textExtent(originBoundaryLabel);
+      int tw = textSize.x;
+      int th = textSize.y;
+      if (ox > tw && ox < visW && (int) visH > th) {
+        int tx = Math.max(4, (ox - tw) / 2);
+        int ty = ((int) visH - th) / 2;
+        gc.drawText(originBoundaryLabel, tx, ty);
+      }
+      if (oy > th && oy < visH && (int) visW - ox > tw) {
+        int topW = (int) visW - ox;
+        int tx = ox + (topW - tw) / 2;
+        int ty = Math.max(4, (oy - th) / 2);
+        gc.drawText(originBoundaryLabel, tx, ty);
+      }
+    }
+  }
+
+  /**
+   * Base spacing between hatching lines at 100% zoom; scaled by zoom so we draw fewer when zoomed
+   * out.
+   */
+  private static final int HATCH_STEP_BASE = 24;
+
+  /**
+   * Draws subtle diagonal hatching in the given rectangle. Uses a global diagonal grid (lines x+y =
+   * base + n*step) so that when multiple regions are hatched (e.g. left and top of origin), the
+   * lines align seamlessly across the boundary.
+   */
+  private void drawHatching(int x, int y, int w, int h) {
+    if (w <= 0 || h <= 0) {
+      return;
+    }
+    gc.setForeground(EColor.DARKGRAY);
+    gc.setLineWidth(1);
+    gc.setLineStyle(ELineStyle.SOLID);
+    float mag = Math.max(0.1f, magnification);
+    int step = Math.max(HATCH_STEP_BASE, (int) (HATCH_STEP_BASE / mag));
+    // Global base so all hatched regions share the same grid (aligns at boundaries).
+    int base = (int) (((offset.x + offset.y) % step + step) % step);
+    // Diagonals are lines where x+y = K; they intersect the rect when K is in [x+y, x+w+y+h].
+    int kMin = x + y;
+    int kMax = x + w + y + h;
+    int nStart = (int) Math.ceil((double) (kMin - base) / step);
+    int nEnd = (int) Math.floor((double) (kMax - base) / step);
+    for (int n = nStart; n <= nEnd; n++) {
+      int k = base + n * step;
+      // Clip line x+y=k to rect [x,x+w] x [y,y+h]: x in [max(x, k-(y+h)), min(x+w, k-y)].
+      int x1 = Math.max(x, k - (y + h));
+      int x2 = Math.min(x + w, k - y);
+      if (x1 <= x2) {
+        gc.drawLine(x1, k - x1, x2, k - x2);
+      }
+    }
+  }
+
+  protected int round(double value) {
+    return (int) Math.round(value);
+  }
+
+  protected int calcArrowLength() {
+    return 19 + (lineWidth - 1) * 5; // arrowhead length
+  }
+
+  protected int[] getLine(P fs, P ts) {
+    if (fs == null || ts == null) {
+      return null;
+    }
+
+    Point from = fs.getLocation();
+    Point to = ts.getLocation();
+
+    int x1 = from.x + iconSize / 2;
+    int y1 = from.y + iconSize / 2;
+
+    int x2 = to.x + iconSize / 2;
+    int y2 = to.y + iconSize / 2;
+
+    return new int[] {x1, y1, x2, y2};
+  }
+
+  @SuppressWarnings("javabugs:S2259") // callers pass a line from getLine() with non-null endpoints
+  protected void drawArrow(EImage arrow, int[] line, H hop, Object startObject, Object endObject)
+      throws HopException {
+    Point screenFrom = real2screen(line[0], line[1]);
+    Point screenTo = real2screen(line[2], line[3]);
+
+    drawArrow(
+        arrow,
+        screenFrom.x,
+        screenFrom.y,
+        screenTo.x,
+        screenTo.y,
+        theta,
+        calcArrowLength(),
+        -1,
+        hop,
+        startObject,
+        endObject);
+  }
+
+  protected abstract void drawArrow(
+      EImage arrow,
+      int x1,
+      int y1,
+      int x2,
+      int y2,
+      double theta,
+      int size,
+      double factor,
+      H jobHop,
+      Object startObject,
+      Object endObject)
+      throws HopException;
+
+  /** Fixed width of the navigation viewport (minimap) in pixels. */
+  private static final int VIEWPORT_WIDTH = 200;
+
+  /** Maximum height of the minimap; height follows content aspect ratio up to this cap. */
+  private static final int VIEWPORT_HEIGHT_MAX = 200;
+
+  /**
+   * Draw a small rectangle at the bottom right of the screen which depicts the viewport as a part
+   * of the total size of the metadata graph. Width is fixed; height follows content aspect ratio
+   * (capped) so the minimap represents the graph without spurious empty space. Content is top-left
+   * aligned so "at the top" of the canvas matches the top of the minimap.
+   */
+  protected void drawNavigationView() {
+    if (!showingNavigationView || maximum == null) {
+      return;
+    }
+    double contentMaxX = Math.max(1, maximum.x);
+    double contentMaxY = Math.max(1, maximum.y);
+
+    // 1) Visible rectangle in graph coordinates (unclamped so we can show panned-outside view).
+    //
+    double mag = Math.max(0.01, magnification);
+    double visibleLeft = -offset.x;
+    double visibleTop = -offset.y;
+    double visibleWidthGraph = area.x / mag;
+    double visibleHeightGraph = area.y / mag;
+    double visibleRightGraph = visibleLeft + visibleWidthGraph;
+    double visibleBottomGraph = visibleTop + visibleHeightGraph;
+
+    // 2) Minimap bounds = union of content and visible view so the overlay always fits inside.
+    //
+    double minGraphX = Math.min(0, visibleLeft);
+    double minGraphY = Math.min(0, visibleTop);
+    double maxGraphX = Math.max(contentMaxX, visibleRightGraph);
+    double maxGraphY = Math.max(contentMaxY, visibleBottomGraph);
+    double graphRangeX = Math.max(1, maxGraphX - minGraphX);
+    double graphRangeY = Math.max(1, maxGraphY - minGraphY);
+
+    // 3) Fixed width; height follows content aspect ratio (capped) so the minimap fits the graph.
+    //
+    int viewportHeight =
+        Math.clamp(
+            (int) Math.round(VIEWPORT_WIDTH * graphRangeY / graphRangeX), 20, VIEWPORT_HEIGHT_MAX);
+    double scale = Math.min(VIEWPORT_WIDTH / graphRangeX, viewportHeight / graphRangeY);
+    double contentWidth = graphRangeX * scale;
+    double contentHeight = graphRangeY * scale;
+    double contentLeft = area.x - VIEWPORT_WIDTH - 10.0;
+    double contentTop = area.y - viewportHeight - 10.0;
+    // Top-left align so "at the top" of the canvas matches the top of the minimap
+
+    int alpha = gc.getAlpha();
+    gc.setAlpha(75);
+
+    gc.setForeground(EColor.DARKGRAY);
+    gc.setBackground(EColor.LIGHTBLUE);
+    gc.drawRectangle((int) contentLeft, (int) contentTop, VIEWPORT_WIDTH, viewportHeight);
+    gc.fillRectangle((int) contentLeft, (int) contentTop, VIEWPORT_WIDTH, viewportHeight);
+
+    // 3) Origin for graph (0,0) in minimap pixels; content and overlay use same scale.
+    //
+    double graphOriginX = contentLeft - minGraphX * scale;
+    double graphOriginY = contentTop - minGraphY * scale;
+    drawNavigationViewContent(graphOriginX, graphOriginY, scale, scale);
+
+    double viewX = graphOriginX + visibleLeft * scale;
+    double viewY = graphOriginY + visibleTop * scale;
+    double viewWidth = visibleWidthGraph * scale;
+    double viewHeight = visibleHeightGraph * scale;
+
+    // Clamp overlay to the drawn content area (avoid drawing outside the light blue)
+    viewX = Math.clamp(viewX, contentLeft, contentLeft + contentWidth - 1);
+    viewY = Math.clamp(viewY, contentTop, contentTop + contentHeight - 1);
+    viewWidth = Math.min(viewWidth, contentLeft + contentWidth - viewX);
+    viewHeight = Math.min(viewHeight, contentTop + contentHeight - viewY);
+    viewWidth = Math.max(0, viewWidth);
+    viewHeight = Math.max(0, viewHeight);
+
+    gc.setForeground(EColor.BLACK);
+    gc.setBackground(EColor.BLUE);
+    gc.drawRectangle((int) viewX, (int) viewY, (int) viewWidth, (int) viewHeight);
+    gc.fillRectangle((int) viewX, (int) viewY, (int) viewWidth, (int) viewHeight);
+
+    graphPort = new Rectangle((int) contentLeft, (int) contentTop, VIEWPORT_WIDTH, viewportHeight);
+    viewPort = new Rectangle((int) viewX, (int) viewY, (int) viewWidth, (int) viewHeight);
+
+    gc.setAlpha(alpha);
+  }
+
+  /**
+   * Override to draw rectangles and lines inside the navigation viewport representing the graph
+   * elements (e.g. transforms/actions and hops). Coordinates are in graph space; convert to
+   * viewport pixels with: screenX = graphX + graphCoordX * scaleX, screenY = graphY + graphCoordY *
+   * scaleY.
+   *
+   * @param graphX left of the viewport rectangle in screen pixels
+   * @param graphY top of the viewport rectangle in screen pixels
+   * @param scaleX scale from graph X to viewport width
+   * @param scaleY scale from graph Y to viewport height
+   */
+  protected void drawNavigationViewContent(
+      double graphX, double graphY, double scaleX, double scaleY) {
+    // Default: nothing. PipelinePainter and WorkflowPainter draw transforms/actions and hops.
+  }
+}

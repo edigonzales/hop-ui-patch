@@ -1,115 +1,82 @@
 # hop-ui-patch
 
-Experimental UI modernization patch set for Apache Hop Desktop (SWT).
+Experimental UI modernization for Apache Hop Desktop (SWT), targeting **Apache Hop 2.19.0**.
 
-The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement, flatter native toolbars, shared dialog/form styling, quieter shared tables, clearer canvas interaction feedback and more restrained combo/dropdown controls.
+The project deliberately avoids a permanent Hop fork. The repository contains a complete source-file overlay representing the current desired UI state. Applying the patch means copying those files over a pinned Apache Hop checkout.
 
-## Implemented phases
+## Current UI improvements
 
-### Phase 1 — application shell
+The phase names remain useful as design history, but they are no longer installation units.
 
-- central `HopUiTheme` with light/dark design tokens;
-- calmer application and canvas surfaces;
-- less visual weight in tabs;
-- slightly tighter default spacing;
-- matching desktop/Web canvas colors;
-- compact 40px perspective rail;
-- unified 20px sidebar icons and 36px hit targets;
-- neutral hover/selection surfaces instead of rounded button cards;
-- slim active indicator shared by perspective and bottom sidebar actions on desktop SWT;
-- native `SWT.FLAT` main and status toolbars;
-- 16px toolbar icons kept intentionally for legibility;
-- toolbar groups separated by whitespace instead of classic SWT/RAP groove lines.
+- **Phase 1A — foundations:** central `HopUiTheme`, calmer application/canvas surfaces, lighter tabs and tighter spacing.
+- **Phase 1B — perspective rail:** compact 40px rail, consistent icons/hit targets, restrained hover/selection and active indicator.
+- **Phase 1C — toolbar:** native `SWT.FLAT` toolbars, whitespace grouping and shared toolbar sizing tokens.
+- **Phase 2 — dialogs/forms:** shared dialog margins and consistent label/control spacing.
+- **Phase 3 — tables:** quieter `TableView`, full-row selection and clearer row-number column.
+- **Phase 4 — canvas feedback:** selection halo, consistent name hover and quieter lasso feedback.
+- **Phase 5A — combo controls:** compact `CCombo` popups and flatter shared combo wrappers.
 
-### Phase 2 — shared dialogs and forms
+See the files in `docs/` for the design decisions and phase-specific scope.
 
-- semantic dialog margin, element-gap and label-gap tokens;
-- `BaseDialog` spacing uses the central theme instead of local magic numbers;
-- `LabelText`, `LabelTextVar`, `LabelCombo` and `LabelComboVar` share one label-to-control gap;
-- the shared form composites keep native SWT controls and explicitly inherit Hop look/background handling;
-- no individual transform/action dialog logic is changed.
+## Delivery model: full-file overlay
 
-### Phase 3 — tables and preview grids
+`overlay/` is the authoritative current patch. It mirrors paths from the Apache Hop repository and contains the **complete patched Java source files**, not fragments or replacement instructions.
 
-- shared `TableView` uses semantic table tokens;
-- permanent cell grid lines are disabled to reduce spreadsheet-like visual noise;
-- native `SWT.FULL_SELECTION` makes the existing row selection clear across the whole table width;
-- the row-number/index column is widened from 25px to 30px for clearer row scanning;
-- native SWT table headers, sorting and scrollbars are retained;
-- existing inline editors, row colors, keyboard shortcuts, clipboard behavior and Hop Web fallbacks remain unchanged;
-- the existing TableView toolbar continues to use Hop's central toolbar/action infrastructure.
+Example:
 
-See `docs/phase2-3-plan.md` for the Phase 2/3 scope and non-goals.
+```text
+overlay/
+├── engine/src/main/java/org/apache/hop/...
+└── ui/src/main/java/org/apache/hop/...
+```
 
-### Phase 4 — canvas interaction feedback
+There is no patch state database, no per-phase migration engine and no stored file-hash history. Git records the evolution of the overlay itself.
 
-- selected pipeline transforms and workflow actions get a restrained halo outside the existing status border;
-- transform/action name hover is consistent on Desktop and Hop Web: subtle surface plus bold graph font;
-- the old desktop-only hover underline is removed;
-- lasso selection uses a low-alpha fill and dashed Hop accent border instead of an outline-only DASHDOT rectangle;
-- context actions, shortcuts, drag/drop, hop creation, hit testing and selection rules remain unchanged;
-- engine painters stay independent from the SWT/UI theme module by using the existing `IGc.EColor` palette.
+## Upstream baseline
 
-See `docs/phase4-canvas.md` for the Phase 4 design boundaries.
+The overlay targets Apache Hop 2.19.0 at exactly:
 
-### Phase 5A — combo/dropdown controls
+```text
+46436154ae1a1e940861d485559819360c2af86e
+```
 
-- shared `CCombo` popups show at most 10 rows before scrolling instead of expanding to very tall technical lists;
-- the limit is a central `HopUiTheme.COMBO_VISIBLE_ITEM_COUNT` token;
-- the behavior is applied centrally from `PropsUi.setLook(...)`, covering direct `CCombo` controls and `ComboVar` where Hop already applies the common look;
-- the shared `LabelCombo` and `ComboVar` wrappers construct their `CCombo` with `SWT.FLAT` for lighter arrow/button chrome;
-- `LabelCombo` now explicitly applies the common look to its inner `CCombo`, which is created after the parent composite's initial look pass;
-- item contents, selection semantics, editability, listeners, keyboard behavior and public `CCombo` APIs remain unchanged;
-- Phase 5A intentionally does not replace `CCombo` with native `Combo` yet.
+The installer refuses another Hop revision. See `UPSTREAM.md`.
 
-See `docs/phase5a-combos.md` for scope and limitations.
-
-## Upstream
-
-The patch targets **Apache Hop 2.19.0** and is pinned to the release source commit:
-
-`46436154ae1a1e940861d485559819360c2af86e`
-
-See `UPSTREAM.md`.
-
-## Apply the current patch set
-
-From a checkout of this repository:
+## Apply
 
 ```bash
 bash scripts/apply-ui-patch.sh /path/to/apache-hop
 ```
 
-The command is idempotent. It detects every managed phase independently, skips phases that are already present and applies only the missing phases. Existing Phase 1 through Phase 4 checkouts can therefore be upgraded directly to the latest patch set.
+The installer does the following:
 
-Example on a Phase 4 checkout:
+1. verifies the pinned Apache Hop commit;
+2. compares every file in `overlay/` with the target checkout;
+3. exits without changing anything when the overlay is already installed;
+4. if files differ and the Hop working tree contains changes, runs `git stash push -u` first;
+5. copies the complete overlay into the Hop checkout;
+6. runs `git diff --check` and verifies every copied file byte-for-byte.
+
+An old `.git/hop-ui-patch-state.json` from previous versions is removed automatically because it is no longer used.
+
+### Existing local changes
+
+Before copying, an existing dirty Hop working tree is saved as a stash such as:
 
 ```text
-1A: already applied, skipping.
-1B: already applied, skipping.
-1C: already applied, skipping.
-2: already applied, skipping.
-3: already applied, skipping.
-4: already applied, skipping.
-Applying 5A...
+stash@{0}: On (no branch): hop-ui-patch backup 2026-08-28 17:45:00
 ```
 
-The manager is deliberately conservative. It refuses:
+The stash is **not** popped automatically. This is intentional: an old UI patch stored in that stash could otherwise overwrite the newly installed overlay.
 
-- a Hop checkout that is not the pinned 2.19.0 source revision;
-- partially applied/inconsistent phase markers;
-- unknown local changes outside the managed patch files;
-- changes to managed files after their state was recorded.
-
-The recorded state and SHA-256 hashes live inside the target Hop checkout's Git metadata (`.git/hop-ui-patch-state.json`), so no bookkeeping file is added to the Hop working tree. Older state files are migrated only after their recorded hashes and phase markers have been verified.
-
-### Phase 1 compatibility command
-
-The old command remains available and intentionally stops after Phase 1C:
+Inspect backups with:
 
 ```bash
-bash scripts/apply-phase1.sh /path/to/apache-hop
+git -C /path/to/apache-hop stash list
+git -C /path/to/apache-hop stash show -p stash@{0}
 ```
+
+Only reapply a stash manually when you actually want its changes back.
 
 ## Status
 
@@ -117,33 +84,30 @@ bash scripts/apply-phase1.sh /path/to/apache-hop
 bash scripts/status.sh /path/to/apache-hop
 ```
 
-Example:
+Example after installation:
 
 ```text
 Apache Hop: 2.19.0
-UI patch:
-  1A Foundations          ✓ applied
-  1B Perspective rail     ✓ applied
-  1C Toolbar              ✓ applied
-   2 Shared dialogs/forms ✓ applied
-   3 Tables/preview grids ✓ applied
-   4 Canvas interaction   ✓ applied
-  5A Combo controls       · missing
+Baseline:   46436154ae1a1e940861d485559819360c2af86e
+Overlay:    16 / 16 files match
+Status:     up to date
 ```
+
+If a file differs, `status.sh` lists the exact path. There is no historical state to migrate.
 
 ## Build
 
-After applying, build Hop normally. A focused check is:
+A focused validation build is:
 
 ```bash
 cd /path/to/apache-hop
 ./mvnw -pl ui,engine -am -DskipTests package
 ```
 
-`package` is intentional here: `hop-engine` has a test-scope dependency on the `hop-core` tests JAR, which is attached during Maven's package phase and is therefore not available when the reactor is stopped at `compile`.
+`package` is intentional: `hop-engine` has a test-scope dependency on the `hop-core` tests JAR, which is attached during Maven's package phase.
 
-## Design direction
+## Developing further UI changes
 
-See `docs/design.md`. The goal is not a web-style skin or custom SWT widget framework. The target is a cleaner native desktop IDE: quieter surfaces, clearer hierarchy, fewer borders, consistent spacing and restrained use of accent colors.
+For new phases, modify the desired Apache Hop source files in `overlay/` directly (or regenerate them from a clean pinned Hop checkout), then run the normal CI build. No new phase applicator, marker set or state migration is required.
 
-Phase 5A remains deliberately conservative: it improves the most intrusive `CCombo` behavior without introducing a replacement widget. A later 5B can evaluate native SWT `Combo` controls separately, with explicit compatibility testing across Desktop and Hop Web.
+The design target remains a cleaner native desktop IDE rather than a web-style skin or a replacement SWT widget framework: quieter surfaces, clearer hierarchy, fewer borders, consistent spacing and restrained accent usage.

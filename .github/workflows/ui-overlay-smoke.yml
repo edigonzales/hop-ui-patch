@@ -1,0 +1,90 @@
+name: UI overlay smoke test
+
+on:
+  push:
+    branches: [main, "feature/**", "refactor/**"]
+  pull_request:
+
+jobs:
+  overlay:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch repository
+        uses: actions/checkout@v4
+
+      - name: Checkout Apache Hop 2.19.0
+        uses: actions/checkout@v4
+        with:
+          repository: apache/hop
+          ref: 46436154ae1a1e940861d485559819360c2af86e
+          path: hop
+
+      - name: Show clean baseline status
+        run: bash scripts/status.sh "$GITHUB_WORKSPACE/hop"
+
+      - name: Apply overlay
+        run: bash scripts/apply-ui-patch.sh "$GITHUB_WORKSPACE/hop"
+
+      - name: Verify overlay status
+        run: |
+          bash scripts/status.sh "$GITHUB_WORKSPACE/hop" | tee /tmp/status-installed.log
+          grep -q "Status:     up to date" /tmp/status-installed.log
+          git -C hop diff --check
+          git -C hop diff --binary > /tmp/ui-overlay.diff
+
+      - name: Reapply overlay as no-op
+        run: |
+          bash scripts/apply-ui-patch.sh "$GITHUB_WORKSPACE/hop" | tee /tmp/reapply.log
+          grep -q "UI overlay already up to date" /tmp/reapply.log
+          git -C hop diff --binary > /tmp/ui-overlay-second.diff
+          cmp /tmp/ui-overlay.diff /tmp/ui-overlay-second.diff
+
+      - name: Verify dirty working tree is stashed before copy
+        run: |
+          git -C hop reset --hard HEAD
+          git -C hop clean -fd
+          git -C hop config user.name "UI Overlay CI"
+          git -C hop config user.email "ui-overlay@example.invalid"
+          printf '\nlocal user edit\n' >> hop/README.md
+          printf '\n// local user edit\n' >> hop/ui/src/main/java/org/apache/hop/ui/hopgui/HopGui.java
+          printf '{"obsolete":true}\n' > hop/.git/hop-ui-patch-state.json
+
+          bash scripts/apply-ui-patch.sh "$GITHUB_WORKSPACE/hop" | tee /tmp/apply-dirty.log
+
+          grep -q "Previous working tree saved as" /tmp/apply-dirty.log
+          grep -q "hop-ui-patch backup" /tmp/apply-dirty.log
+          test ! -e hop/.git/hop-ui-patch-state.json
+          ! grep -q "local user edit" hop/README.md
+          ! grep -q "local user edit" hop/ui/src/main/java/org/apache/hop/ui/hopgui/HopGui.java
+          git -C hop stash list -1 | grep -q "hop-ui-patch backup"
+          git -C hop stash show -p stash@{0} | grep -q "local user edit"
+          bash scripts/status.sh "$GITHUB_WORKSPACE/hop" | grep -q "Status:     up to date"
+          git -C hop diff --check
+
+  build:
+    needs: overlay
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout patch repository
+        uses: actions/checkout@v4
+
+      - name: Checkout Apache Hop 2.19.0
+        uses: actions/checkout@v4
+        with:
+          repository: apache/hop
+          ref: 46436154ae1a1e940861d485559819360c2af86e
+          path: hop
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Apply overlay
+        run: bash scripts/apply-ui-patch.sh "$GITHUB_WORKSPACE/hop"
+
+      - name: Build affected modules
+        working-directory: hop
+        run: ./mvnw -pl ui,engine -am -DskipTests package
