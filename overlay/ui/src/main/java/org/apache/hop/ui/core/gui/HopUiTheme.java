@@ -35,6 +35,12 @@ public final class HopUiTheme {
   public static final int TOOLBAR_ITEM_PADDING = 2;
   public static final int TOOLBAR_CONTROL_GAP = 3;
 
+  // Shared dialogs and form rows. These values deliberately stay compact because many Hop dialogs
+  // contain long technical forms. The goal is clearer grouping, not web-style oversized controls.
+  public static final int DIALOG_MARGIN = 16;
+  public static final int DIALOG_ELEMENT_GAP = 8;
+  public static final int FORM_LABEL_GAP = 8;
+
   public static RGB applicationBackground(boolean darkMode) {
     return darkMode ? rgb(35, 35, 35) : rgb(255, 255, 255);
   }
