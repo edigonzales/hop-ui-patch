@@ -52,11 +52,12 @@ jobs:
           rm -f hop/.git/hop-ui-patch-state.json
           bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-phase1.log
 
-      - name: Detect Phase 1 with Phase 2 missing
+      - name: Detect Phase 1 with later phases missing
         run: |
           set -o pipefail
           bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-phase1.log
           grep -q "2 Shared dialogs/forms.*missing" /tmp/status-phase1.log
+          grep -q "3 Tables/preview grids.*missing" /tmp/status-phase1.log
 
       - name: Upgrade Phase 1 to latest UI patch
         run: |
@@ -68,6 +69,32 @@ jobs:
           git -C hop diff --check
           git -C hop diff --binary > /tmp/ui-from-phase1.diff
           cmp /tmp/ui-full.diff /tmp/ui-from-phase1.diff
+
+      - name: Create complete Phase 2 checkout
+        run: |
+          set -o pipefail
+          git -C hop reset --hard HEAD
+          git -C hop clean -fd
+          rm -f hop/.git/hop-ui-patch-state.json
+          python3 scripts/patch_manager.py apply "$GITHUB_WORKSPACE/hop" --through 2 2>&1 | tee /tmp/apply-phase2.log
+
+      - name: Detect Phase 2 with Phase 3 missing
+        run: |
+          set -o pipefail
+          bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-phase2.log
+          grep -q "2 Shared dialogs/forms.*applied" /tmp/status-phase2.log
+          grep -q "3 Tables/preview grids.*missing" /tmp/status-phase2.log
+
+      - name: Upgrade Phase 2 to Phase 3
+        run: |
+          set -o pipefail
+          bash scripts/apply-ui-patch.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/upgrade-phase2.log
+
+      - name: Verify Phase 2 upgrade converges
+        run: |
+          git -C hop diff --check
+          git -C hop diff --binary > /tmp/ui-from-phase2.diff
+          cmp /tmp/ui-full.diff /tmp/ui-from-phase2.diff
 
       - name: Create legacy state-v1 Phase 1 checkout
         run: |
@@ -128,6 +155,9 @@ jobs:
             /tmp/apply-phase1.log
             /tmp/status-phase1.log
             /tmp/upgrade-phase1.log
+            /tmp/apply-phase2.log
+            /tmp/status-phase2.log
+            /tmp/upgrade-phase2.log
             /tmp/upgrade-state-v1.log
             /tmp/unknown-change.log
 

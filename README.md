@@ -2,7 +2,7 @@
 
 Experimental UI modernization patch set for Apache Hop Desktop (SWT).
 
-The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement, flatter native toolbars and shared dialog/form styling.
+The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement, flatter native toolbars, shared dialog/form styling and quieter shared tables.
 
 ## Implemented phases
 
@@ -29,6 +29,16 @@ The project deliberately avoids a Hop fork. It keeps the changes small, reviewab
 - the shared form composites keep native SWT controls and explicitly inherit Hop look/background handling;
 - no individual transform/action dialog logic is changed.
 
+### Phase 3 — tables and preview grids
+
+- shared `TableView` uses semantic table tokens;
+- permanent cell grid lines are disabled to reduce spreadsheet-like visual noise;
+- native `SWT.FULL_SELECTION` makes the existing row selection clear across the whole table width;
+- the row-number/index column is widened from 25px to 30px for clearer row scanning;
+- native SWT table headers, sorting and scrollbars are retained;
+- existing inline editors, row colors, keyboard shortcuts, clipboard behavior and Hop Web fallbacks remain unchanged;
+- the existing TableView toolbar continues to use Hop's central toolbar/action infrastructure.
+
 See `docs/phase2-3-plan.md` for the Phase 2/3 scope and non-goals.
 
 ## Upstream
@@ -47,15 +57,16 @@ From a checkout of this repository:
 bash scripts/apply-ui-patch.sh /path/to/apache-hop
 ```
 
-The command is idempotent. It detects every managed phase independently, skips phases that are already present and applies only the missing phases. A checkout with Phase 1 already applied can therefore be upgraded directly to Phase 2.
+The command is idempotent. It detects every managed phase independently, skips phases that are already present and applies only the missing phases. Existing Phase 1 or Phase 2 checkouts can therefore be upgraded directly to the latest patch set.
 
-Example:
+Example on a Phase 2 checkout:
 
 ```text
 1A: already applied, skipping.
 1B: already applied, skipping.
 1C: already applied, skipping.
-Applying 2...
+2: already applied, skipping.
+Applying 3...
 ```
 
 The manager is deliberately conservative. It refuses:
@@ -65,7 +76,7 @@ The manager is deliberately conservative. It refuses:
 - unknown local changes outside the managed patch files;
 - changes to managed files after their state was recorded.
 
-The recorded state and SHA-256 hashes live inside the target Hop checkout's Git metadata (`.git/hop-ui-patch-state.json`), so no bookkeeping file is added to the Hop working tree. State files created by the first Phase 1 patch manager are migrated after their recorded hashes and phase markers have been verified.
+The recorded state and SHA-256 hashes live inside the target Hop checkout's Git metadata (`.git/hop-ui-patch-state.json`), so no bookkeeping file is added to the Hop working tree. Older state files are migrated only after their recorded hashes and phase markers have been verified.
 
 ### Phase 1 compatibility command
 
@@ -89,7 +100,8 @@ UI patch:
   1A Foundations          ✓ applied
   1B Perspective rail     ✓ applied
   1C Toolbar              ✓ applied
-   2 Shared dialogs/forms · missing
+   2 Shared dialogs/forms ✓ applied
+   3 Tables/preview grids · missing
 ```
 
 ## Build
@@ -107,4 +119,4 @@ cd /path/to/apache-hop
 
 See `docs/design.md`. The goal is not a web-style skin or custom SWT widget framework. The target is a cleaner native desktop IDE: quieter surfaces, clearer hierarchy, fewer borders, consistent spacing and restrained use of accent colors.
 
-Next: Phase 3 modernizes the shared `TableView`/preview-grid surface while retaining native SWT table behavior.
+Phase 4 is intentionally not part of this change set; canvas interactions and context menus should be evaluated separately after the shared dialog/table foundations are visually tested.

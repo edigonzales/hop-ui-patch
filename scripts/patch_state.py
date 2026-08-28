@@ -9,9 +9,9 @@ import subprocess
 from pathlib import Path
 
 UPSTREAM = "46436154ae1a1e940861d485559819360c2af86e"
-STATE_VERSION = 2
+STATE_VERSION = 3
 STATE_FILENAME = "hop-ui-patch-state.json"
-PHASE_ORDER = ("1A", "1B", "1C", "2")
+PHASE_ORDER = ("1A", "1B", "1C", "2", "3")
 
 THEME = "ui/src/main/java/org/apache/hop/ui/core/gui/HopUiTheme.java"
 GUI_RESOURCE = "ui/src/main/java/org/apache/hop/ui/core/gui/GuiResource.java"
@@ -24,6 +24,7 @@ LABEL_TEXT = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelText.java"
 LABEL_TEXT_VAR = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelTextVar.java"
 LABEL_COMBO = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelCombo.java"
 LABEL_COMBO_VAR = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelComboVar.java"
+TABLE_VIEW = "ui/src/main/java/org/apache/hop/ui/core/widget/TableView.java"
 
 KNOWN_PATHS = (
     THEME,
@@ -37,6 +38,7 @@ KNOWN_PATHS = (
     LABEL_TEXT_VAR,
     LABEL_COMBO,
     LABEL_COMBO_VAR,
+    TABLE_VIEW,
 )
 
 PHASE_PATHS = {
@@ -44,6 +46,7 @@ PHASE_PATHS = {
     "1B": {THEME, HOP_GUI},
     "1C": {THEME, HOP_GUI, GUI_TOOLBAR},
     "2": {THEME, BASE_DIALOG, LABEL_TEXT, LABEL_TEXT_VAR, LABEL_COMBO, LABEL_COMBO_VAR},
+    "3": {THEME, TABLE_VIEW},
 }
 
 PHASE_MARKERS = {
@@ -77,6 +80,13 @@ PHASE_MARKERS = {
         LABEL_TEXT_VAR: ("int margin = HopUiTheme.FORM_LABEL_GAP;",),
         LABEL_COMBO: ("int margin = HopUiTheme.FORM_LABEL_GAP;",),
         LABEL_COMBO_VAR: ("int margin = HopUiTheme.FORM_LABEL_GAP;",),
+    },
+    "3": {
+        TABLE_VIEW: (
+            "SWT.MULTI | SWT.FULL_SELECTION",
+            "HopUiTheme.TABLE_GRID_LINES_VISIBLE",
+            "HopUiTheme.TABLE_INDEX_COLUMN_WIDTH",
+        ),
     },
 }
 
