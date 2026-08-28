@@ -27,10 +27,10 @@ jobs:
           cache: maven
 
       - name: Apply Phase 1A-1C from clean checkout
-        run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/apply-phase1.log
+        run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop"
 
       - name: Check managed patch status
-        run: bash scripts/status.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/status-phase1.log
+        run: bash scripts/status.sh "$GITHUB_WORKSPACE/hop"
 
       - name: Check resulting diff
         run: |
@@ -39,22 +39,12 @@ jobs:
           git -C hop diff --stat
 
       - name: Reapply Phase 1
-        run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/reapply-phase1.log
+        run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop"
 
       - name: Verify repeated apply changed nothing
         run: |
           git -C hop diff --binary > /tmp/phase1-second.diff
           cmp /tmp/phase1-full.diff /tmp/phase1-second.diff
-
-      - name: Upload patch-manager diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: patch-manager-diagnostics
-          path: |
-            /tmp/apply-phase1.log
-            /tmp/status-phase1.log
-            /tmp/reapply-phase1.log
 
       - name: Build affected modules
         working-directory: hop
@@ -62,16 +52,21 @@ jobs:
         # The attached tests JAR is created in Maven's package phase, not compile.
         run: ./mvnw -pl ui,engine -am -DskipTests package
 
-      - name: Verify upgrade from legacy Phase 1A-only checkout
+      - name: Create legacy Phase 1A-only checkout
         run: |
           git -C hop reset --hard HEAD
           git -C hop clean -fd
           rm -f hop/.git/hop-ui-patch-state.json
-
           python3 scripts/apply_phase1a.py "$GITHUB_WORKSPACE/hop"
-          bash scripts/status.sh "$GITHUB_WORKSPACE/hop"
-          bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop"
 
+      - name: Detect legacy Phase 1A-only state
+        run: bash scripts/status.sh "$GITHUB_WORKSPACE/hop"
+
+      - name: Upgrade legacy Phase 1A-only state
+        run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop"
+
+      - name: Verify legacy upgrade converges to full Phase 1
+        run: |
           git -C hop diff --check
           git -C hop diff --binary > /tmp/phase1-from-1a.diff
           cmp /tmp/phase1-full.diff /tmp/phase1-from-1a.diff
