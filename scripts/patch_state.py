@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""State detection and verification for the Apache Hop Phase 1 UI patch."""
+"""State detection and verification for the Apache Hop UI patch set."""
 
 from __future__ import annotations
 
@@ -18,12 +18,24 @@ PROPS_UI = "ui/src/main/java/org/apache/hop/ui/core/PropsUi.java"
 CANVAS_PALETTE = "engine/src/main/java/org/apache/hop/core/gui/CanvasColorPalette.java"
 HOP_GUI = "ui/src/main/java/org/apache/hop/ui/hopgui/HopGui.java"
 GUI_TOOLBAR = "ui/src/main/java/org/apache/hop/ui/core/gui/GuiToolbarWidgets.java"
+TABLE_VIEW = "ui/src/main/java/org/apache/hop/ui/core/widget/TableView.java"
 
-KNOWN_PATHS = (THEME, GUI_RESOURCE, PROPS_UI, CANVAS_PALETTE, HOP_GUI, GUI_TOOLBAR)
+PHASE_ORDER = ("1A", "1B", "1C", "3")
+
+KNOWN_PATHS = (
+    THEME,
+    GUI_RESOURCE,
+    PROPS_UI,
+    CANVAS_PALETTE,
+    HOP_GUI,
+    GUI_TOOLBAR,
+    TABLE_VIEW,
+)
 PHASE_PATHS = {
     "1A": {THEME, GUI_RESOURCE, PROPS_UI, CANVAS_PALETTE},
     "1B": {THEME, HOP_GUI},
     "1C": {THEME, HOP_GUI, GUI_TOOLBAR},
+    "3": {THEME, TABLE_VIEW},
 }
 
 PHASE_MARKERS = {
@@ -45,6 +57,14 @@ PHASE_MARKERS = {
         GUI_TOOLBAR: (
             "private void addToolbarGroupGap(ToolBar toolBar)",
             "HopUiTheme.TOOLBAR_ICON_SIZE",
+        ),
+    },
+    "3": {
+        TABLE_VIEW: (
+            "table.setLinesVisible(false)",
+            "SWT.FLAT | SWT.WRAP | SWT.LEFT | SWT.HORIZONTAL",
+            "HopUiTheme.TABLE_INDEX_COLUMN_WIDTH",
+            "HopUiTheme.TABLE_TOOLBAR_GAP",
         ),
     },
 }
@@ -91,13 +111,17 @@ def phase_status(hop: Path, phase: str) -> str:
 
 
 def detect_phases(hop: Path) -> dict[str, str]:
-    phases = {phase: phase_status(hop, phase) for phase in ("1A", "1B", "1C")}
+    phases = {phase: phase_status(hop, phase) for phase in PHASE_ORDER}
     if any(value == "partial" for value in phases.values()):
         return phases
-    if phases["1B"] == "applied" and phases["1A"] != "applied":
-        phases["1B"] = "partial"
-    if phases["1C"] == "applied" and phases["1B"] != "applied":
-        phases["1C"] = "partial"
+
+    # Applied phases must form one continuous prefix. A later phase without its predecessor is an
+    # inconsistent state even when its own structural markers happen to be complete.
+    for index in range(1, len(PHASE_ORDER)):
+        phase = PHASE_ORDER[index]
+        previous = PHASE_ORDER[index - 1]
+        if phases[phase] == "applied" and phases[previous] != "applied":
+            phases[phase] = "partial"
     return phases
 
 
@@ -166,18 +190,26 @@ def load_state(hop: Path) -> dict | None:
         fail(f"invalid patch state file {path}: {exc}")
 
 
+def normalized_recorded_phases(state: dict) -> dict[str, str]:
+    # Older manager versions did not know about later phases. Missing phase keys therefore mean
+    # "not applied yet", not a corrupt state file.
+    recorded = state.get("phases", {})
+    return {phase: recorded.get(phase, "missing") for phase in PHASE_ORDER}
+
+
 def verify_recorded_state(hop: Path, state: dict) -> dict[str, str]:
     if state.get("version") != STATE_VERSION or state.get("upstream") != UPSTREAM:
         fail("patch state file belongs to another patch-manager version or Hop baseline")
 
     phases = detect_phases(hop)
-    if phases != state.get("phases"):
-        fail(f"patch markers changed since the last managed run: recorded={state.get('phases')}, actual={phases}")
+    recorded_phases = normalized_recorded_phases(state)
+    if phases != recorded_phases:
+        fail(f"patch markers changed since the last managed run: recorded={recorded_phases}, actual={phases}")
 
     expected_hashes = state.get("files", {})
     actual_hashes = snapshot_hashes(hop)
-    for relative in KNOWN_PATHS:
-        if expected_hashes.get(relative) != actual_hashes.get(relative):
+    for relative, expected in expected_hashes.items():
+        if relative in actual_hashes and expected != actual_hashes.get(relative):
             fail(f"unknown local change in managed file: {relative}")
 
     unknown = dirty_paths(hop) - allowed_paths(phases)
