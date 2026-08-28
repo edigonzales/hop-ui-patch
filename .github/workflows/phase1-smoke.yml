@@ -26,8 +26,8 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Apply Phase 1
-        run: python3 scripts/apply_phase1.py "$GITHUB_WORKSPACE/hop"
+      - name: Apply Phase 1A-1C
+        run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop"
 
       - name: Show resulting diff
         run: git -C hop diff --check && git -C hop diff --stat

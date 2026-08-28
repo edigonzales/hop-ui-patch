@@ -28,6 +28,13 @@ public final class HopUiTheme {
   public static final int SIDEBAR_INDICATOR_WIDTH = 3;
   public static final int SIDEBAR_INDICATOR_INSET = 8;
 
+  // Toolbars. Keep Hop's existing 16px icon size: the modernization comes from flatter native
+  // chrome and whitespace-based grouping, not from making already-small icons harder to hit.
+  public static final int TOOLBAR_ICON_SIZE = 16;
+  public static final int TOOLBAR_GROUP_GAP = 10;
+  public static final int TOOLBAR_ITEM_PADDING = 2;
+  public static final int TOOLBAR_CONTROL_GAP = 3;
+
   public static RGB applicationBackground(boolean darkMode) {
     return darkMode ? rgb(35, 35, 35) : rgb(255, 255, 255);
   }
@@ -67,6 +74,10 @@ public final class HopUiTheme {
   public static RGB sidebarIndicator(boolean darkMode) {
     // A restrained cool accent that already fits Hop's existing blue-gray UI vocabulary.
     return darkMode ? rgb(126, 159, 182) : rgb(61, 99, 128);
+  }
+
+  public static RGB toolbarBackground(boolean darkMode) {
+    return panelBackground(darkMode);
   }
 
   private static RGB rgb(int red, int green, int blue) {

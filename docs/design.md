@@ -37,6 +37,19 @@ The 2.19.0 desktop sidebar already uses an owner-drawn SWT `Canvas`, so it is a 
 
 The active state should read from peripheral vision without turning the whole navigation item into a colored card.
 
+## Main toolbar
+
+Phase 1C keeps the toolbar native SWT. The important change is to remove visual chrome rather than replace the control:
+
+- create the main and status toolbars with `SWT.FLAT`;
+- keep the existing 16 logical-pixel icon size for legibility and stable hit targets;
+- use the secondary panel surface as the common toolbar background;
+- replace classic separator grooves with 10 logical pixels of whitespace;
+- use the same spacing tokens in the RAP/Web composite toolbar paths;
+- keep labels, combos, text fields, enable/disable behavior, shortcuts and plugin registration unchanged.
+
+The grouping rule is deliberately simple: actions in the same group stay visually close; a semantic separator creates breathing room, not a vertical line. This is closer to current desktop IDE toolbars and avoids adding custom painting where SWT already provides appropriate native behavior.
+
 ## SWT strategy
 
 Do not introduce owner-drawn replacements for standard text fields, buttons, tables or scroll bars in the first phases. Those controls are expensive to maintain and tend to regress accessibility and platform behavior.
@@ -45,7 +58,7 @@ Prefer, in order:
 
 1. existing Hop resource/palette abstractions;
 2. existing `PropsUi.setLook(...)` hooks;
-3. standard SWT control properties;
+3. standard SWT control properties and styles such as `SWT.FLAT`;
 4. owner drawing only for controls Hop already draws itself (canvas, existing sidebar canvases, SVG-label navigation etc.).
 
 ## Phase sequence
@@ -69,10 +82,11 @@ Prefer, in order:
 
 ### Phase 1C — toolbar
 
-- reduce visual density;
-- normalize small icon sizing;
-- group actions with whitespace rather than heavy separators;
-- flat hover/selected states.
+- native flat main/status toolbars;
+- semantic toolbar sizing and surface tokens;
+- whitespace-based action grouping instead of separator grooves;
+- consistent composite spacing for RAP/Web paths;
+- no per-plugin toolbar modifications.
 
 ### Phase 2 — shared dialogs/widgets
 
