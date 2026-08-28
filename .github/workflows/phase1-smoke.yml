@@ -38,6 +38,14 @@ jobs:
           git -C hop diff --binary > /tmp/phase1-full.diff
           git -C hop diff --stat
 
+      - name: Reapply Phase 1
+        run: bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop" 2>&1 | tee /tmp/reapply-phase1.log
+
+      - name: Verify repeated apply changed nothing
+        run: |
+          git -C hop diff --binary > /tmp/phase1-second.diff
+          cmp /tmp/phase1-full.diff /tmp/phase1-second.diff
+
       - name: Upload patch-manager diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -46,12 +54,7 @@ jobs:
           path: |
             /tmp/apply-phase1.log
             /tmp/status-phase1.log
-
-      - name: Verify repeated apply is a no-op
-        run: |
-          bash scripts/apply-phase1.sh "$GITHUB_WORKSPACE/hop"
-          git -C hop diff --binary > /tmp/phase1-second.diff
-          cmp /tmp/phase1-full.diff /tmp/phase1-second.diff
+            /tmp/reapply-phase1.log
 
       - name: Build affected modules
         working-directory: hop
