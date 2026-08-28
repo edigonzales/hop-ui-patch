@@ -9,9 +9,9 @@ import subprocess
 from pathlib import Path
 
 UPSTREAM = "46436154ae1a1e940861d485559819360c2af86e"
-STATE_VERSION = 4
+STATE_VERSION = 5
 STATE_FILENAME = "hop-ui-patch-state.json"
-PHASE_ORDER = ("1A", "1B", "1C", "2", "3", "4")
+PHASE_ORDER = ("1A", "1B", "1C", "2", "3", "4", "5A")
 
 THEME = "ui/src/main/java/org/apache/hop/ui/core/gui/HopUiTheme.java"
 GUI_RESOURCE = "ui/src/main/java/org/apache/hop/ui/core/gui/GuiResource.java"
@@ -24,6 +24,7 @@ LABEL_TEXT = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelText.java"
 LABEL_TEXT_VAR = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelTextVar.java"
 LABEL_COMBO = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelCombo.java"
 LABEL_COMBO_VAR = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelComboVar.java"
+COMBO_VAR = "ui/src/main/java/org/apache/hop/ui/core/widget/ComboVar.java"
 TABLE_VIEW = "ui/src/main/java/org/apache/hop/ui/core/widget/TableView.java"
 BASE_PAINTER = "engine/src/main/java/org/apache/hop/core/gui/BasePainter.java"
 PIPELINE_PAINTER = "engine/src/main/java/org/apache/hop/pipeline/PipelinePainter.java"
@@ -41,6 +42,7 @@ KNOWN_PATHS = (
     LABEL_TEXT_VAR,
     LABEL_COMBO,
     LABEL_COMBO_VAR,
+    COMBO_VAR,
     TABLE_VIEW,
     BASE_PAINTER,
     PIPELINE_PAINTER,
@@ -54,6 +56,7 @@ PHASE_PATHS = {
     "2": {THEME, BASE_DIALOG, LABEL_TEXT, LABEL_TEXT_VAR, LABEL_COMBO, LABEL_COMBO_VAR},
     "3": {THEME, TABLE_VIEW},
     "4": {BASE_PAINTER, PIPELINE_PAINTER, WORKFLOW_PAINTER},
+    "5A": {THEME, PROPS_UI, LABEL_COMBO, COMBO_VAR},
 }
 
 PHASE_MARKERS = {
@@ -111,6 +114,30 @@ PHASE_MARKERS = {
             "drawNameHoverSurface(xPos - 5, yPos - 2, nameExtent.x + 10, nameExtent.y + 6);",
         ),
     },
+    "5A": {
+        PROPS_UI: (
+            "widget instanceof CCombo combo",
+            "combo.setVisibleItemCount(HopUiTheme.COMBO_VISIBLE_ITEM_COUNT);",
+        ),
+        LABEL_COMBO: (
+            "new CCombo(this, textFlags | SWT.FLAT)",
+            "PropsUi.setLook(wCombo);",
+        ),
+        COMBO_VAR: ("new CCombo(this, flags | SWT.FLAT)",),
+    },
+}
+
+# State v1 could be recorded while the Phase 1C branch still contained the earlier Web-toolbar
+# spacer implementation. The final Phase 1C cleanup changed GuiToolbarWidgets.java without changing
+# the structural 1C markers. Accept only this exact historical hash transition; all other managed
+# file hash mismatches remain fatal.
+LEGACY_HASH_TRANSITIONS = {
+    (
+        1,
+        GUI_TOOLBAR,
+        "c214f1f614a2562550e99e59981fd6a8e898a9846d38201a68021e47c59b5447",
+        "7d91ba78ca39fd6e0eb3f4d7c149c9e9bafe7416e408d0f81f92189e0599ffee",
+    ): "Phase 1C toolbar spacer cleanup",
 }
 
 
@@ -231,6 +258,21 @@ def load_state(hop: Path) -> dict | None:
         fail(f"invalid patch state file {path}: {exc}")
 
 
+def known_legacy_hash_transition(
+    state_version: int,
+    relative: str,
+    expected_hash: str | None,
+    actual_hash: str | None,
+) -> bool:
+    label = LEGACY_HASH_TRANSITIONS.get(
+        (state_version, relative, expected_hash, actual_hash)
+    )
+    if label is None:
+        return False
+    print(f"Migrating known legacy managed-file state for {relative}: {label}.")
+    return True
+
+
 def verify_recorded_state(hop: Path, state: dict) -> dict[str, str]:
     state_version = state.get("version")
     if not isinstance(state_version, int) or state_version < 1 or state_version > STATE_VERSION:
@@ -250,12 +292,16 @@ def verify_recorded_state(hop: Path, state: dict) -> dict[str, str]:
             )
 
     # Older state files know about fewer managed paths. Verify exactly what they recorded first;
-    # once that succeeds we can safely migrate the state file to the current schema.
+    # once that succeeds we can safely migrate the state file to the current schema. A tiny set of
+    # exact historical hash transitions is allowed for known patch-generated cleanup commits.
     expected_hashes = state.get("files", {})
     if not isinstance(expected_hashes, dict):
         fail("patch state file contains an invalid file hash map")
     for relative, expected_hash in expected_hashes.items():
-        if sha256(hop / relative) != expected_hash:
+        actual_hash = sha256(hop / relative)
+        if actual_hash != expected_hash and not known_legacy_hash_transition(
+            state_version, relative, expected_hash, actual_hash
+        ):
             fail(f"unknown local change in managed file: {relative}")
 
     unknown = dirty_paths(hop) - allowed_paths(phases)

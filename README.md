@@ -2,7 +2,7 @@
 
 Experimental UI modernization patch set for Apache Hop Desktop (SWT).
 
-The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement, flatter native toolbars, shared dialog/form styling, quieter shared tables and clearer canvas interaction feedback.
+The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement, flatter native toolbars, shared dialog/form styling, quieter shared tables, clearer canvas interaction feedback and more restrained combo/dropdown controls.
 
 ## Implemented phases
 
@@ -52,6 +52,18 @@ See `docs/phase2-3-plan.md` for the Phase 2/3 scope and non-goals.
 
 See `docs/phase4-canvas.md` for the Phase 4 design boundaries.
 
+### Phase 5A — combo/dropdown controls
+
+- shared `CCombo` popups show at most 10 rows before scrolling instead of expanding to very tall technical lists;
+- the limit is a central `HopUiTheme.COMBO_VISIBLE_ITEM_COUNT` token;
+- the behavior is applied centrally from `PropsUi.setLook(...)`, covering direct `CCombo` controls and `ComboVar` where Hop already applies the common look;
+- the shared `LabelCombo` and `ComboVar` wrappers construct their `CCombo` with `SWT.FLAT` for lighter arrow/button chrome;
+- `LabelCombo` now explicitly applies the common look to its inner `CCombo`, which is created after the parent composite's initial look pass;
+- item contents, selection semantics, editability, listeners, keyboard behavior and public `CCombo` APIs remain unchanged;
+- Phase 5A intentionally does not replace `CCombo` with native `Combo` yet.
+
+See `docs/phase5a-combos.md` for scope and limitations.
+
 ## Upstream
 
 The patch targets **Apache Hop 2.19.0** and is pinned to the release source commit:
@@ -68,9 +80,9 @@ From a checkout of this repository:
 bash scripts/apply-ui-patch.sh /path/to/apache-hop
 ```
 
-The command is idempotent. It detects every managed phase independently, skips phases that are already present and applies only the missing phases. Existing Phase 1, Phase 2 or Phase 3 checkouts can therefore be upgraded directly to the latest patch set.
+The command is idempotent. It detects every managed phase independently, skips phases that are already present and applies only the missing phases. Existing Phase 1 through Phase 4 checkouts can therefore be upgraded directly to the latest patch set.
 
-Example on a Phase 3 checkout:
+Example on a Phase 4 checkout:
 
 ```text
 1A: already applied, skipping.
@@ -78,7 +90,8 @@ Example on a Phase 3 checkout:
 1C: already applied, skipping.
 2: already applied, skipping.
 3: already applied, skipping.
-Applying 4...
+4: already applied, skipping.
+Applying 5A...
 ```
 
 The manager is deliberately conservative. It refuses:
@@ -114,7 +127,8 @@ UI patch:
   1C Toolbar              ✓ applied
    2 Shared dialogs/forms ✓ applied
    3 Tables/preview grids ✓ applied
-   4 Canvas interaction   · missing
+   4 Canvas interaction   ✓ applied
+  5A Combo controls       · missing
 ```
 
 ## Build
@@ -132,4 +146,4 @@ cd /path/to/apache-hop
 
 See `docs/design.md`. The goal is not a web-style skin or custom SWT widget framework. The target is a cleaner native desktop IDE: quieter surfaces, clearer hierarchy, fewer borders, consistent spacing and restrained use of accent colors.
 
-Phase 4 deliberately stops at visual interaction feedback. Changes to context actions, canvas gestures or other interaction semantics should remain separate and be evaluated only after the visual patch has been tested in daily use.
+Phase 5A remains deliberately conservative: it improves the most intrusive `CCombo` behavior without introducing a replacement widget. A later 5B can evaluate native SWT `Combo` controls separately, with explicit compatibility testing across Desktop and Hop Web.

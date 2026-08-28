@@ -116,6 +116,10 @@ def main() -> None:
         / "GuiToolbarWidgets.java"
     )
 
+    # Phase 1C replaces all ConstUi.SMALL_ICON_SIZE usages in this class. Remove the now-unused
+    # import as part of the generated canonical patch instead of relying on IDE import cleanup.
+    replace_once(toolbar, "import org.apache.hop.ui.core.ConstUi;\n", "")
+
     # Replace visual separator grooves with whitespace. ToolItem#setControl on a separator is a
     # standard SWT mechanism, so this keeps the toolbar native while making grouping much quieter.
     replace_once(
