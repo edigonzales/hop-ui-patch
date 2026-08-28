@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""State detection and verification for the Apache Hop Phase 1 UI patch."""
+"""State detection and verification for the Apache Hop UI patch set."""
 
 from __future__ import annotations
 
@@ -9,8 +9,9 @@ import subprocess
 from pathlib import Path
 
 UPSTREAM = "46436154ae1a1e940861d485559819360c2af86e"
-STATE_VERSION = 1
+STATE_VERSION = 2
 STATE_FILENAME = "hop-ui-patch-state.json"
+PHASE_ORDER = ("1A", "1B", "1C", "2")
 
 THEME = "ui/src/main/java/org/apache/hop/ui/core/gui/HopUiTheme.java"
 GUI_RESOURCE = "ui/src/main/java/org/apache/hop/ui/core/gui/GuiResource.java"
@@ -18,12 +19,31 @@ PROPS_UI = "ui/src/main/java/org/apache/hop/ui/core/PropsUi.java"
 CANVAS_PALETTE = "engine/src/main/java/org/apache/hop/core/gui/CanvasColorPalette.java"
 HOP_GUI = "ui/src/main/java/org/apache/hop/ui/hopgui/HopGui.java"
 GUI_TOOLBAR = "ui/src/main/java/org/apache/hop/ui/core/gui/GuiToolbarWidgets.java"
+BASE_DIALOG = "ui/src/main/java/org/apache/hop/ui/core/dialog/BaseDialog.java"
+LABEL_TEXT = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelText.java"
+LABEL_TEXT_VAR = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelTextVar.java"
+LABEL_COMBO = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelCombo.java"
+LABEL_COMBO_VAR = "ui/src/main/java/org/apache/hop/ui/core/widget/LabelComboVar.java"
 
-KNOWN_PATHS = (THEME, GUI_RESOURCE, PROPS_UI, CANVAS_PALETTE, HOP_GUI, GUI_TOOLBAR)
+KNOWN_PATHS = (
+    THEME,
+    GUI_RESOURCE,
+    PROPS_UI,
+    CANVAS_PALETTE,
+    HOP_GUI,
+    GUI_TOOLBAR,
+    BASE_DIALOG,
+    LABEL_TEXT,
+    LABEL_TEXT_VAR,
+    LABEL_COMBO,
+    LABEL_COMBO_VAR,
+)
+
 PHASE_PATHS = {
     "1A": {THEME, GUI_RESOURCE, PROPS_UI, CANVAS_PALETTE},
     "1B": {THEME, HOP_GUI},
     "1C": {THEME, HOP_GUI, GUI_TOOLBAR},
+    "2": {THEME, BASE_DIALOG, LABEL_TEXT, LABEL_TEXT_VAR, LABEL_COMBO, LABEL_COMBO_VAR},
 }
 
 PHASE_MARKERS = {
@@ -46,6 +66,17 @@ PHASE_MARKERS = {
             "private void addToolbarGroupGap(ToolBar toolBar)",
             "HopUiTheme.TOOLBAR_ICON_SIZE",
         ),
+    },
+    "2": {
+        BASE_DIALOG: (
+            "MARGIN_SIZE = HopUiTheme.DIALOG_MARGIN",
+            "LABEL_SPACING = HopUiTheme.FORM_LABEL_GAP",
+            "ELEMENT_SPACING = HopUiTheme.DIALOG_ELEMENT_GAP",
+        ),
+        LABEL_TEXT: ("HopUiTheme.FORM_LABEL_GAP", "PropsUi.setLook(this);"),
+        LABEL_TEXT_VAR: ("int margin = HopUiTheme.FORM_LABEL_GAP;",),
+        LABEL_COMBO: ("int margin = HopUiTheme.FORM_LABEL_GAP;",),
+        LABEL_COMBO_VAR: ("int margin = HopUiTheme.FORM_LABEL_GAP;",),
     },
 }
 
@@ -91,13 +122,14 @@ def phase_status(hop: Path, phase: str) -> str:
 
 
 def detect_phases(hop: Path) -> dict[str, str]:
-    phases = {phase: phase_status(hop, phase) for phase in ("1A", "1B", "1C")}
+    phases = {phase: phase_status(hop, phase) for phase in PHASE_ORDER}
     if any(value == "partial" for value in phases.values()):
         return phases
-    if phases["1B"] == "applied" and phases["1A"] != "applied":
-        phases["1B"] = "partial"
-    if phases["1C"] == "applied" and phases["1B"] != "applied":
-        phases["1C"] = "partial"
+
+    for index, phase in enumerate(PHASE_ORDER[1:], start=1):
+        previous = PHASE_ORDER[index - 1]
+        if phases[phase] == "applied" and phases[previous] != "applied":
+            phases[phase] = "partial"
     return phases
 
 
@@ -167,22 +199,38 @@ def load_state(hop: Path) -> dict | None:
 
 
 def verify_recorded_state(hop: Path, state: dict) -> dict[str, str]:
-    if state.get("version") != STATE_VERSION or state.get("upstream") != UPSTREAM:
-        fail("patch state file belongs to another patch-manager version or Hop baseline")
+    state_version = state.get("version")
+    if not isinstance(state_version, int) or state_version < 1 or state_version > STATE_VERSION:
+        fail("patch state file belongs to an unsupported patch-manager version")
+    if state.get("upstream") != UPSTREAM:
+        fail("patch state file belongs to another Hop baseline")
 
     phases = detect_phases(hop)
-    if phases != state.get("phases"):
-        fail(f"patch markers changed since the last managed run: recorded={state.get('phases')}, actual={phases}")
+    recorded_phases = state.get("phases", {})
+    if not isinstance(recorded_phases, dict):
+        fail("patch state file contains an invalid phase map")
+    for phase, recorded_status in recorded_phases.items():
+        if phase not in phases or phases[phase] != recorded_status:
+            fail(
+                "patch markers changed since the last managed run: "
+                f"recorded={recorded_phases}, actual={phases}"
+            )
 
+    # Older state files know about fewer managed paths. Verify exactly what they recorded first;
+    # once that succeeds we can safely migrate the state file to the current schema.
     expected_hashes = state.get("files", {})
-    actual_hashes = snapshot_hashes(hop)
-    for relative in KNOWN_PATHS:
-        if expected_hashes.get(relative) != actual_hashes.get(relative):
+    if not isinstance(expected_hashes, dict):
+        fail("patch state file contains an invalid file hash map")
+    for relative, expected_hash in expected_hashes.items():
+        if sha256(hop / relative) != expected_hash:
             fail(f"unknown local change in managed file: {relative}")
 
     unknown = dirty_paths(hop) - allowed_paths(phases)
     if unknown:
         fail("unknown local changes outside the managed patch: " + ", ".join(sorted(unknown)))
+
+    if state_version != STATE_VERSION or set(recorded_phases) != set(PHASE_ORDER):
+        write_state(hop)
     return phases
 
 

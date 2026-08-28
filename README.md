@@ -2,27 +2,34 @@
 
 Experimental UI modernization patch set for Apache Hop Desktop (SWT).
 
-The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement and a flatter native toolbar.
+The project deliberately avoids a Hop fork. It keeps the changes small, reviewable and upstream-friendly: central design tokens, palette/canvas cleanup, navigation refinement, flatter native toolbars and shared dialog/form styling.
 
-## Phase 1
+## Implemented phases
 
-The implementation currently covers the visual foundations, perspective rail and main/status toolbars:
+### Phase 1 — application shell
 
-- a central `HopUiTheme` with light/dark design tokens;
+- central `HopUiTheme` with light/dark design tokens;
 - calmer application and canvas surfaces;
 - less visual weight in tabs;
 - slightly tighter default spacing;
 - matching desktop/Web canvas colors;
-- a compact 40px perspective rail;
+- compact 40px perspective rail;
 - unified 20px sidebar icons and 36px hit targets;
 - neutral hover/selection surfaces instead of rounded button cards;
-- a slim active indicator shared by perspective and bottom sidebar actions on desktop SWT;
+- slim active indicator shared by perspective and bottom sidebar actions on desktop SWT;
 - native `SWT.FLAT` main and status toolbars;
 - 16px toolbar icons kept intentionally for legibility;
-- toolbar groups separated by whitespace instead of classic SWT/RAP groove lines;
-- shared toolbar spacing tokens for desktop and Web/RAP paths.
+- toolbar groups separated by whitespace instead of classic SWT/RAP groove lines.
 
-No transform dialogs or business logic are changed.
+### Phase 2 — shared dialogs and forms
+
+- semantic dialog margin, element-gap and label-gap tokens;
+- `BaseDialog` spacing uses the central theme instead of local magic numbers;
+- `LabelText`, `LabelTextVar`, `LabelCombo` and `LabelComboVar` share one label-to-control gap;
+- the shared form composites keep native SWT controls and explicitly inherit Hop look/background handling;
+- no individual transform/action dialog logic is changed.
+
+See `docs/phase2-3-plan.md` for the Phase 2/3 scope and non-goals.
 
 ## Upstream
 
@@ -32,22 +39,23 @@ The patch targets **Apache Hop 2.19.0** and is pinned to the release source comm
 
 See `UPSTREAM.md`.
 
-## Apply
+## Apply the current patch set
 
 From a checkout of this repository:
 
 ```bash
-bash scripts/apply-phase1.sh /path/to/apache-hop
+bash scripts/apply-ui-patch.sh /path/to/apache-hop
 ```
 
-The command is idempotent. It detects Phase 1A, 1B and 1C independently, skips phases that are already present and applies only the missing phases. This also supports upgrading an older checkout where, for example, only Phase 1A was applied.
+The command is idempotent. It detects every managed phase independently, skips phases that are already present and applies only the missing phases. A checkout with Phase 1 already applied can therefore be upgraded directly to Phase 2.
 
-Example on a partially patched checkout:
+Example:
 
 ```text
 1A: already applied, skipping.
-Applying 1B...
-Applying 1C...
+1B: already applied, skipping.
+1C: already applied, skipping.
+Applying 2...
 ```
 
 The manager is deliberately conservative. It refuses:
@@ -57,7 +65,15 @@ The manager is deliberately conservative. It refuses:
 - unknown local changes outside the managed patch files;
 - changes to managed files after their state was recorded.
 
-The recorded state and SHA-256 hashes live inside the target Hop checkout's Git metadata (`.git/hop-ui-patch-state.json`), so no bookkeeping file is added to the Hop working tree. Existing Phase 1 checkouts created before the state manager are adopted once from structural phase markers; subsequent runs are hash-verified.
+The recorded state and SHA-256 hashes live inside the target Hop checkout's Git metadata (`.git/hop-ui-patch-state.json`), so no bookkeeping file is added to the Hop working tree. State files created by the first Phase 1 patch manager are migrated after their recorded hashes and phase markers have been verified.
+
+### Phase 1 compatibility command
+
+The old command remains available and intentionally stops after Phase 1C:
+
+```bash
+bash scripts/apply-phase1.sh /path/to/apache-hop
+```
 
 ## Status
 
@@ -70,9 +86,10 @@ Example:
 ```text
 Apache Hop: 2.19.0
 UI patch:
-  1A Foundations        ✓ applied
-  1B Perspective rail   ✓ applied
-  1C Toolbar            · missing
+  1A Foundations          ✓ applied
+  1B Perspective rail     ✓ applied
+  1C Toolbar              ✓ applied
+   2 Shared dialogs/forms · missing
 ```
 
 ## Build
@@ -90,4 +107,4 @@ cd /path/to/apache-hop
 
 See `docs/design.md`. The goal is not a web-style skin or custom SWT widget framework. The target is a cleaner native desktop IDE: quieter surfaces, clearer hierarchy, fewer borders, consistent spacing and restrained use of accent colors.
 
-Next: Phase 2 should move into shared dialogs/widgets, starting with reusable table/form infrastructure rather than individual transform dialogs.
+Next: Phase 3 modernizes the shared `TableView`/preview-grid surface while retaining native SWT table behavior.

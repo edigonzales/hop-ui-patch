@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compatibility entry point: apply managed Phase 1A + 1B."""
+"""Compatibility entry point: apply the complete managed Phase 1A + 1B + 1C patch."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from patch_state import fail
 def main() -> None:
     if len(sys.argv) != 2:
         fail("usage: apply_phase1.py /path/to/apache-hop")
-    apply_to(Path(sys.argv[1]).expanduser().resolve(), through="1B")
+    apply_to(Path(sys.argv[1]).expanduser().resolve(), through="1C")
 
 
 if __name__ == "__main__":
