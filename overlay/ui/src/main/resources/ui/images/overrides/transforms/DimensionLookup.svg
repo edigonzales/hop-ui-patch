@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M2.6 3.4h13.3a2.4 2.4 0 0 1 2.4 2.4v9.299999999999999a2.4 2.4 0 0 1 -2.4 2.4H5.0a2.4 2.4 0 0 1 -2.4 -2.4V5.8a2.4 2.4 0 0 1 2.4 -2.4z" fill="#4A90D9"/>
+  <path d="M15.900000000000002 3.4h5.5v5.5h-5.5z" fill="#4A90D9" opacity=".55"/>
+  <text x="12" y="16.8" font-family="Helvetica, Arial, sans-serif" font-size="7.5" font-weight="bold" fill="#FFFFFF" text-anchor="middle">DIM</text>
+</svg>

@@ -15,7 +15,16 @@ colors, never copied files.
       folder, execution, metadata, gear, plugin, terminal, show-results,
       hide-results, add, open, save, save-as, undo, redo, copy, paste, cut,
       search, close, delete, select-all, unselect-all, shutdown, image
-- [ ] N2b transforms (most-used first)
+- [x] N2b transforms, first batch (40 icons in
+      `overlay/ui/.../ui/images/overrides/transforms/`): CSVInput, ExcelInput,
+      TextFileInput2, TableInput, TableOutput, TextFileOutput,
+      TypeExitExcelWriterTransform, JsonInput, JsonOutput, XMLInputStream,
+      GetVariable, Rest, Http, SystemInfo, StreamLookup, DBLookup, DBJoin,
+      DimensionLookup, MergeJoin, JoinRows, MergeRows, GroupBy, MemoryGroupBy,
+      SelectValues, SortRows, FilterRows, RowGenerator, Dummy, Calculator,
+      Formula, Constant, Sequence, SetVariable, UserDefinedJavaClass,
+      ScriptValueMod, ExecSql, SQLFileOutput, SwitchCase, WriteToLog, Unique
+- [ ] N2b transforms, long tail
 - [ ] N2c actions & databases
 
 ## Transforms (N2b)
