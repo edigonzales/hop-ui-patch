@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M2.6 3.4h13.3a2.4 2.4 0 0 1 2.4 2.4v9.299999999999999a2.4 2.4 0 0 1 -2.4 2.4H5.0a2.4 2.4 0 0 1 -2.4 -2.4V5.8a2.4 2.4 0 0 1 2.4 -2.4z" fill="#FFFFFF"/>
+  <path d="M15.900000000000002 3.4h5.5v5.5h-5.5z" fill="#E3E9F0" opacity=".8"/>
+  <text x="9.25" y="15.2" font-family="Helvetica, Arial, sans-serif" font-size="8" font-weight="bold" fill="#8E6DB8" text-anchor="middle">V</text>
+  <path d="M2.6 5.8a2.4 2.4 0 0 1 2.4 -2.4h14.0a2.4 2.4 0 0 1 2.4 2.4v2.8000000000000003h-18.8v-7.6z" fill="#8E6DB8"/>
+</svg>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M4.6 8.6h10v8.8c0 1.9-2.5 3-5.0 3s-5.0-1.1-5.0-3V8.6z" fill="#00566A"/>
+  <path d="M4.6 8.6h10v2.2H4.6z" fill="#00566A" opacity=".45"/>
+  <ellipse cx="9.6" cy="8.6" rx="5.0" ry="2.3" fill="#00758F"/>
+  <ellipse cx="9.6" cy="8.6" rx="5.0" ry="2.3" fill="none" stroke="#00566A" stroke-width=".7"/>
+  <text x="9.6" y="15.4" font-family="Helvetica, Arial, sans-serif" font-size="7" font-weight="bold" fill="#FFFFFF" text-anchor="middle">my</text>
+</svg>

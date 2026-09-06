@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <rect x="2.4" y="4" width="10.4" height="12" rx="1.8" fill="#4A90D9"/>
+  <rect x="11.2" y="8" width="10.4" height="12" rx="1.8" fill="#2FA3A3"/>
+  <text x="7.6" y="12.4" font-family="Helvetica, Arial, sans-serif" font-size="6" font-weight="bold" fill="#FFFFFF" text-anchor="middle">XML</text>
+  <text x="16.4" y="16.4" font-family="Helvetica, Arial, sans-serif" font-size="6" font-weight="bold" fill="#FFFFFF" text-anchor="middle">XML</text>
+</svg>
