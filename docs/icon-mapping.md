@@ -24,7 +24,20 @@ colors, never copied files.
       SelectValues, SortRows, FilterRows, RowGenerator, Dummy, Calculator,
       Formula, Constant, Sequence, SetVariable, UserDefinedJavaClass,
       ScriptValueMod, ExecSql, SQLFileOutput, SwitchCase, WriteToLog, Unique
-- [ ] N2b transforms, long tail
+- [x] N2b transforms, second batch (59 icons): Abort, AddXML,
+      AdvancedXMLOutput, AnalyticQuery, Append, BlockingTransform,
+      BlockUntilTransformsFinish, ChangeFileEncoding, CheckSum, CloneRow,
+      Coalesce, ColumnExists, CombinationLookup, ConcatFields,
+      CreditCardValidator, DataGrid, Delay, Denormaliser, DetectEmptyStream,
+      DetectLastRow, DynamicSqlRow, EnhancedJsonOutput, ExecInfo, ExecProcess,
+      FieldSplitter, FieldsChangeSequence, FileExists, FileLocked, Flattener,
+      FuzzyMatch, GetFileNames, IfNull, Janino, JavaFilter, JdbcMetadata,
+      LoadFileInput, MetaInject, Normaliser, NullIf, NumberRange, ProcessFiles,
+      PropertyInput, PropertyOutput, RegexEval, ReplaceString, SampleRows,
+      SchemaMapping, SetValueConstant, SetValueField, SplitFieldToRows3,
+      StringCut, StringOperations, TableCompare, TableExists, ValueMapper,
+      WebServiceAvailable, WebServiceLookup, YamlInput, ZipFile
+- [ ] N2b transforms, long tail (remaining ~70)
 - [ ] N2c actions & databases
 
 ## Transforms (N2b)
