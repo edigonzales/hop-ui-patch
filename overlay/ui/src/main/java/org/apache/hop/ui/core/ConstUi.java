@@ -1,0 +1,260 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.hop.ui.core;
+
+import java.util.Arrays;
+import java.util.List;
+import org.apache.hop.core.Const;
+import org.apache.hop.core.util.Utils;
+import org.eclipse.swt.widgets.Control;
+import org.eclipse.swt.widgets.Menu;
+import org.eclipse.swt.widgets.TreeItem;
+
+/**
+ * This class is used to define a number of default values for various settings throughout Hop. It
+ * also contains a number of static final methods to make your life easier.
+ */
+public class ConstUi {
+  /** Default icon size */
+  public static final int ICON_SIZE = 40;
+
+  public static final int LARGE_ICON_SIZE = 48;
+
+  public static final int SMALL_ICON_SIZE = 20;
+
+  public static final int MEDIUM_ICON_SIZE = 28;
+
+  public static final int DOCUMENTATION_ICON_SIZE = 16;
+
+  /** Default checkbox width */
+  public static final int CHECKBOX_WIDTH = 20;
+
+  /** Default line width for arrows &amp; around icons */
+  public static final int LINE_WIDTH = 1;
+
+  /** Default grid size to which the graphical views snap. */
+  public static final int GRID_SIZE = 16;
+
+  /** The minimal size of a note on a graphical view (width &amp; height) */
+  public static final int NOTE_MIN_SIZE = 20;
+
+  /**
+   * Default logical width for a new note (before multiplying by {@code
+   * PropsUi.getNativeZoomFactor()}).
+   */
+  public static final int NOTE_DEFAULT_WIDTH = 300;
+
+  /** Offset between pointer and tooltip position. */
+  public static final int TOOLTIP_OFFSET = 5;
+
+  /** The default red-component of the background color */
+  public static final int COLOR_BACKGROUND_RED = 255;
+
+  /** The default green-component of the background color */
+  public static final int COLOR_BACKGROUND_GREEN = 255;
+
+  /** The default blue-component of the background color */
+  public static final int COLOR_BACKGROUND_BLUE = 255;
+
+  /** The default red-component of the graph background color */
+  public static final int COLOR_GRAPH_RED = 255;
+
+  /** The default green-component of the graph background color */
+  public static final int COLOR_GRAPH_GREEN = 255;
+
+  /** The default blue-component of the graph background color */
+  public static final int COLOR_GRAPH_BLUE = 255;
+
+  /** The default red-component of the tab selected color */
+  public static final int COLOR_TAB_RED = 240;
+
+  /** The default green-component of the tab selected color */
+  public static final int COLOR_TAB_GREEN = 240;
+
+  /** The default blue-component of the tab selected color */
+  public static final int COLOR_TAB_BLUE = 240;
+
+  /** the default canvas refresh interval for running pipelines */
+  public static final int INTERVAL_MS_PIPELINE_CANVAS_REFRESH = 1000;
+
+  /** margin between points of controls */
+  public static final int SMALL_MARGIN = 5;
+
+  /** margin between points of controls */
+  public static final int MEDIUM_MARGIN = 10;
+
+  /**
+   * This is the global zoom factor. When set it takes precedence over what is entered in the GUI
+   * options. A number smaller than 1 makes everything smaller. A factor larger than 1 makes the UI
+   * widgets look bigger.
+   */
+  public static final String HOP_GUI_ZOOM_FACTOR = "HOP_GUI_ZOOM_FACTOR";
+
+  /**
+   * This option allows you to hide the menu bar from Hop GUI. Set the value of this variable to Y
+   * and see it go away.
+   */
+  public static final String HOP_GUI_HIDE_MENU = "HOP_GUI_HIDE_MENU";
+
+  /**
+   * Determine the level of where the TreeItem is position in a tree.
+   *
+   * @param ti The TreeItem
+   * @return The level of the item in the tree
+   */
+  public static final int getTreeLevel(TreeItem ti) {
+    int level = 0;
+    TreeItem parent = ti.getParentItem();
+    while (parent != null) {
+      level++;
+      parent = parent.getParentItem();
+    }
+
+    return level;
+  }
+
+  /**
+   * Get an array of strings containing the path from the given TreeItem to the parent.
+   *
+   * @param ti The TreeItem to look at
+   * @return An array of string describing the path to the TreeItem.
+   */
+  public static final String[] getTreeStrings(TreeItem ti) {
+    int nrlevels = getTreeLevel(ti) + 1;
+    String[] retval = new String[nrlevels];
+    int level = 0;
+
+    retval[nrlevels - 1] = ti.getText();
+    TreeItem parent = ti.getParentItem();
+    while (parent != null) {
+      level++;
+      retval[nrlevels - level - 1] = parent.getText();
+      parent = parent.getParentItem();
+    }
+
+    return retval;
+  }
+
+  /**
+   * Return the tree path seperated by Const.FILE_SEPARATOR, starting from a certain depth in the
+   * tree.
+   *
+   * @param ti The TreeItem to get the path for
+   * @param from The depth to start at, use 0 to get the complete tree.
+   * @return The tree path.
+   */
+  public static final String getTreePath(TreeItem ti, int from) {
+    String[] path = getTreeStrings(ti);
+
+    if (path == null) {
+      return null;
+    }
+
+    String retval = "";
+
+    for (int i = from; i < path.length; i++) {
+      if (!path[i].equalsIgnoreCase(Const.FILE_SEPARATOR)) {
+        retval += Const.FILE_SEPARATOR + path[i];
+      }
+    }
+
+    return retval;
+  }
+
+  /**
+   * Flips the TreeItem from expanded to not expanded or vice-versa.
+   *
+   * @param ti The TreeItem to flip.
+   */
+  public static final void flipExpanded(TreeItem ti) {
+    ti.setExpanded(!ti.getExpanded());
+  }
+
+  public static final TreeItem findTreeItem(TreeItem parent, String name) {
+    return findTreeItem(parent, null, name);
+  }
+
+  /**
+   * Finds a TreeItem with a certain label (name) in a (part of a) tree.
+   *
+   * @param parent The TreeItem where we start looking.
+   * @param parentName The name of the parent to match as well (null=not used)
+   * @param name The name or item label to look for.
+   * @return The TreeItem if the label was found, null if nothing was found.
+   */
+  public static final TreeItem findTreeItem(TreeItem parent, String parentName, String name) {
+    return findTreeItem(null, parent, parentName, name);
+  }
+
+  private static final TreeItem findTreeItem(
+      TreeItem grandParent, TreeItem parent, String parentName, String name) {
+    if (Utils.isEmpty(parentName)) {
+      if (parent.getText().equalsIgnoreCase(name)) {
+        return parent;
+      }
+    } else {
+      if (grandParent != null
+          && grandParent.getText().equalsIgnoreCase(parentName)
+          && parent.getText().equalsIgnoreCase(name)) {
+        return parent;
+      }
+    }
+
+    TreeItem[] ti = parent.getItems();
+    for (TreeItem treeItem : ti) {
+      TreeItem child = findTreeItem(parent, treeItem, parentName, name);
+      if (child != null) {
+        return child;
+      }
+    }
+    return null;
+  }
+
+  public static void displayMenu(Menu menu, Control control) {
+    Menu oldMenu = control.getMenu();
+    if (oldMenu != null && oldMenu != menu) {
+      oldMenu.setVisible(false);
+    }
+    menu.setVisible(true);
+  }
+
+  /**
+   * Sort field names if options is enabled
+   *
+   * @param names
+   */
+  public static String[] sortFieldNames(List<String> names) {
+    String[] result = names.toArray(new String[0]);
+    if (PropsUi.getInstance().isSortFieldByName()) {
+      Arrays.sort(result);
+    }
+    return result;
+  }
+
+  /**
+   * Sort field names if options is enabled
+   *
+   * @param names
+   */
+  public static String[] sortFieldNames(String[] names) {
+    if (PropsUi.getInstance().isSortFieldByName()) {
+      Arrays.sort(names);
+    }
+    return names;
+  }
+}

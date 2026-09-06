@@ -93,7 +93,7 @@ public final class CanvasColorPalette {
   /** Light theme palette (matches GuiResource defaults for {@code /ui}). */
   public static CanvasColorPalette light() {
     return new CanvasColorPalette(
-        rgb(250, 250, 250),
+        rgb(255, 255, 255),
         rgb(0, 0, 0),
         rgb(254, 254, 254),
         rgb(255, 0, 0),
@@ -103,8 +103,8 @@ public final class CanvasColorPalette {
         rgb(255, 0, 255),
         rgb(128, 0, 128),
         rgb(75, 0, 130),
-        rgb(229, 231, 235),
-        rgb(238, 239, 241),
+        rgb(232, 228, 218),
+        rgb(241, 238, 231),
         rgb(100, 100, 100),
         rgb(135, 206, 250),
         rgb(61, 99, 128),

@@ -4,17 +4,22 @@ Experimental UI modernization for Apache Hop Desktop (SWT), targeting **Apache H
 
 The project deliberately avoids a permanent Hop fork. The repository contains a complete source-file overlay representing the current desired UI state. Applying the patch means copying those files over a pinned Apache Hop checkout.
 
-## Current UI improvements
+## Current UI state (v2)
 
-The phase names remain useful as design history, but they are no longer installation units.
+The v1 phase history (gray-on-gray surfaces, monochrome icons) has been superseded.
+v2 inverts the priorities — see `docs/design-v2.md` for the full design:
 
-- **Phase 1A — foundations:** central `HopUiTheme`, calmer application/canvas surfaces, lighter tabs and tighter spacing.
-- **Phase 1B — perspective rail:** compact 40px rail, consistent icons/hit targets, restrained hover/selection and active indicator.
-- **Phase 1C — toolbar:** native `SWT.FLAT` toolbars, whitespace grouping and shared toolbar sizing tokens.
-- **Phase 2 — dialogs/forms:** shared dialog margins and consistent label/control spacing.
-- **Phase 3 — tables:** quieter `TableView`, full-row selection and clearer row-number column.
-- **Phase 4 — canvas feedback:** selection halo, consistent name hover and quieter lasso feedback.
-- **Phase 5A — combo controls:** compact `CCombo` popups and flatter shared combo wrappers.
+- **N1 — palette, surfaces & spacing:** white/eggshell surfaces instead of gray
+  (`#FFFFFF` app, `#FAF9F5` panels, white canvas), Hop brand blue accent `#0A4A6B`,
+  bigger spacing tokens, +1 pt base font, 30px tabs.
+- **N1 — sizes:** toolbar/menu icons 16 → **20**, sidebar rail 40 → **48** (icons 24,
+  hit targets 44), canvas icons 32 → **40**, medium 28.
+- **N2 (in progress) — icons:** central override hook in `GuiResource`
+  (`ui/images/overrides/<pluginId>.svg`, fallback to the plugin's own image) plus new
+  full-color icons in the classic Kettle style; progress in `docs/icon-mapping.md`.
+
+Planned: **N3** padding rollout to dialogs/widgets/tables, **N4** canvas feedback,
+**N5** dark mode.
 
 See the files in `docs/` for the design decisions and phase-specific scope.
 

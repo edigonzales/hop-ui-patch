@@ -37,6 +37,7 @@ import org.apache.hop.core.row.IValueMeta;
 import org.apache.hop.core.row.value.ValueMetaPluginType;
 import org.apache.hop.core.util.Utils;
 import org.apache.hop.ui.core.ConstUi;
+import org.apache.hop.ui.core.gui.HopUiTheme;
 import org.apache.hop.ui.core.PropsUi;
 import org.apache.hop.ui.core.widget.OsHelper;
 import org.apache.hop.ui.hopgui.HopWebUrlHelper;
@@ -625,7 +626,9 @@ public class GuiResource {
       String filename = transform.getImageFile();
       try {
         ClassLoader classLoader = registry.getClassLoader(transform);
-        image = SwtSvgImageUtil.getUniversalImage(display, classLoader, filename);
+        image =
+            loadPluginUniversalImage(
+                transform.getIds()[0], "transforms", filename, classLoader);
       } catch (Throwable t) {
         log.logError(
             CONST_ERROR_OCCURRED_LOADING_IMAGE + filename + CONST_FOR_PLUGIN + transform, t);
@@ -648,7 +651,8 @@ public class GuiResource {
     //
     FontData defaultFontData = props.getDefaultFontData();
     int defaultFontSize =
-        (int) Math.round(defaultFontData.getHeight() * props.getGlobalZoomFactor());
+        (int) Math.round(defaultFontData.getHeight() * props.getGlobalZoomFactor())
+            + HopUiTheme.BASE_FONT_DELTA;
     defaultFontData.setHeight(defaultFontSize);
     fontDefault = new ManagedFont(display, defaultFontData);
 
@@ -913,6 +917,30 @@ public class GuiResource {
         SwtSvgImageUtil.getImageAsResource(display, "ui/images/hop-arrow-candidate.svg");
   }
 
+  /**
+   * Load a plugin image, preferring a bundled override icon shipped with hop-ui
+   * ({@code ui/images/overrides/<category>/<pluginId>.svg}) over the plugin's own image. This is
+   * the central hook that lets the UI patch restyle plugin icons without touching plugin jars.
+   *
+   * @param pluginId the plugin id, e.g. {@code CSVInput}
+   * @param category override subfolder, e.g. {@code transforms}, {@code actions}
+   * @param filename the plugin's own image file (fallback)
+   * @param pluginClassLoader the plugin classloader (fallback)
+   * @return the override image when present, otherwise the plugin image
+   */
+  private SwtUniversalImage loadPluginUniversalImage(
+      String pluginId, String category, String filename, ClassLoader pluginClassLoader) {
+    String override = "ui/images/overrides/" + category + "/" + pluginId + ".svg";
+    try {
+      if (getClass().getClassLoader().getResource(override) != null) {
+        return SwtSvgImageUtil.getImageAsResource(display, override);
+      }
+    } catch (Throwable ignored) {
+      // fall through to the plugin's own image
+    }
+    return SwtSvgImageUtil.getUniversalImage(display, pluginClassLoader, filename);
+  }
+
   /** Load the plugin image from a file. */
   private Image loadPluginImage(IPlugin plugin, Image defaultImage) {
     // If no image defined, use default image
@@ -922,11 +950,16 @@ public class GuiResource {
 
     Image image = null;
     try {
-      PluginRegistry registry = PluginRegistry.getInstance();
-      ClassLoader classLoader = registry.getClassLoader(plugin);
-      image =
-          getImage(
-              plugin.getImageFile(), classLoader, ConstUi.SMALL_ICON_SIZE, ConstUi.SMALL_ICON_SIZE);
+      String override = "ui/images/overrides/plugins/" + plugin.getIds()[0] + ".svg";
+      if (getClass().getClassLoader().getResource(override) != null) {
+        image = getImage(override, getClass().getClassLoader(), ConstUi.SMALL_ICON_SIZE, ConstUi.SMALL_ICON_SIZE);
+      } else {
+        PluginRegistry registry = PluginRegistry.getInstance();
+        ClassLoader classLoader = registry.getClassLoader(plugin);
+        image =
+            getImage(
+                plugin.getImageFile(), classLoader, ConstUi.SMALL_ICON_SIZE, ConstUi.SMALL_ICON_SIZE);
+      }
     } catch (Throwable t) {
       log.logError(
           CONST_ERROR_OCCURRED_LOADING_IMAGE
@@ -961,7 +994,9 @@ public class GuiResource {
       String filename = plugin.getImageFile();
       try {
         ClassLoader classLoader = registry.getClassLoader(plugin);
-        image = SwtSvgImageUtil.getUniversalImage(display, classLoader, filename);
+        image =
+            loadPluginUniversalImage(
+                plugin.getIds()[0], "actions", filename, classLoader);
       } catch (Throwable t) {
         log.logError(
             CONST_ERROR_OCCURRED_LOADING_IMAGE + filename + CONST_FOR_PLUGIN + plugin.getIds()[0],
