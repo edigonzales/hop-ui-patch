@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+
+  <rect x="5.4" y="4.2" width="13.2" height="2.4" rx="1.2" fill="#8FA9C4"/>
+  <rect x="9.8" y="2.4" width="4.4" height="1.9" rx=".95" fill="#8FA9C4"/>
+  <path d="M7 8h10l-.9 11.4a1.9 1.9 0 0 1-1.9 1.8H9.8a1.9 1.9 0 0 1-1.9-1.8L7 8z" fill="#E15B5B"/>
+  <rect x="9.6" y="10.4" width="4.8" height="1.7" rx=".85" fill="#FFFFFF" opacity=".55"/>
+  <rect x="9.6" y="13.6" width="4.8" height="1.7" rx=".85" fill="#FFFFFF" opacity=".55"/>
+
+</svg>

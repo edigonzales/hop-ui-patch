@@ -11,7 +11,10 @@ colors, never copied files.
 ## Status
 
 - [x] N2a mechanism: override hook in `GuiResource` (+README resource)
-- [ ] N2a core UI + perspective icons
+- [x] N2a core UI + perspective icons (24 icons in `overlay/ui/.../ui/images/`):
+      folder, execution, metadata, gear, plugin, terminal, show-results,
+      hide-results, add, open, save, save-as, undo, redo, copy, paste, cut,
+      search, close, delete, select-all, unselect-all, shutdown, image
 - [ ] N2b transforms (most-used first)
 - [ ] N2c actions & databases
 

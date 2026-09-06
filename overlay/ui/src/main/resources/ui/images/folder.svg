@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+
+  <path d="M3.5 8.2c0-1 .8-1.8 1.8-1.8h3.9l1.8 2h8.2c1 0 1.8.8 1.8 1.8v.8H3.5v-2.8z" fill="#F6C65B"/>
+  <path d="M3.5 10h17v6.3c0 1-.8 1.8-1.8 1.8H5.3c-1 0-1.8-.8-1.8-1.8V10z" fill="#F0A83A"/>
+  <path d="M3.5 10h17v1.6H3.5z" fill="#F6C65B" opacity=".55"/>
+
+</svg>
