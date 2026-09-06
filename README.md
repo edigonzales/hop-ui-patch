@@ -111,23 +111,54 @@ cd /path/to/apache-hop
 The patch is validated by building two Hop clients from source and comparing them
 side by side:
 
-| Directory | Source | Purpose |
+| Client | Source | Purpose |
 |---|---|---|
-| `hop-main` | apache/hop `main` | current upstream state |
-| `hop-2.19.0` | pinned 2.19.0 commit + overlay | the patched variant |
+| `hop-main` | apache/hop `main` (= latest `2.20.0-SNAPSHOT`) | current upstream state |
+| `hop-2.19.0-patched` | pinned 2.19.0 commit + overlay | the patched variant |
 
-### One-time setup
+Everything lives under one base directory — here `~/sources/hop-ab` ("hop" + "A/B";
+any name works, the scripts take the paths as arguments):
+
+```text
+~/sources/hop-ab/
+├── hop-main/                  apache/hop clone on main, used as checkout AND as
+│                              the shared git object store for the worktree below
+├── hop-2.19.0/                git worktree at the pinned 2.19.0 commit
+│                              (46436154…), with the overlay applied on top
+└── dist/                      built clients (unzipped, ready to run)
+    ├── hop-main/              ← ./hop-gui.sh, ./hop-run.sh, lib/core/…
+    └── hop-2.19.0-patched/    ← same layout, with the patched jars
+```
+
+### 1. One-time setup
 
 ```bash
-# full clone of apache/hop + a worktree at the pinned 2.19.0 commit + overlay applied
 bash scripts/setup-checkouts.sh ~/sources/hop-ab
 ```
 
-Creates `~/sources/hop-ab/hop-main` and `~/sources/hop-ab/hop-2.19.0` (shared git object
-store, ~1 GB once). The overlay installer verifies the pinned commit — no other Hop revision
-is accepted.
+What this does, step by step:
 
-### Build both clients
+1. `git clone https://github.com/apache/hop.git ~/sources/hop-ab/hop-main`
+   (full clone, ~1 GB, done once — also serves as object store for the worktree)
+2. `git worktree add ~/sources/hop-ab/hop-2.19.0 46436154ae1a1e940861d485559819360c2af86e`
+   (second working tree at the pinned 2.19.0 commit, no second clone needed)
+3. `scripts/apply-ui-patch.sh ~/sources/hop-ab/hop-2.19.0`
+   (copies the 16 overlay files; refuses any other Hop revision)
+
+Example output:
+
+```text
+==> Cloning apache/hop (full clone, ~1 GB) into …/hop-main ...
+==> Adding worktree …/hop-2.19.0 at 46436154ae1a1e940861d485559819360c2af86e ...
+==> Applying hop-ui-patch overlay ...
+Apache Hop 2.19.0: 46436154ae1a1e940861d485559819360c2af86e
+Installed 16 overlay files.
+```
+
+Re-running the setup is safe: existing directories are fetched/reset and the
+overlay application is idempotent.
+
+### 2. Build both clients
 
 ```bash
 bash scripts/build-ab-dist.sh \
@@ -136,27 +167,51 @@ bash scripts/build-ab-dist.sh \
   ~/sources/hop-ab/dist
 ```
 
-Each build runs `./mvnw -DskipTests clean package` in the checkout (full reactor including
-all plugins) and unpacks the official `assemblies/client/target/hop-client-*.zip` into
-`dist/hop-main/` and `dist/hop-2.19.0-patched/`. The results are **unzipped** so individual
-JARs stay replaceable.
+Each client build runs `./mvnw -DskipTests clean package` inside the checkout
+(full reactor including all plugins; ~20–40 min cold, ~5–15 min warm) and then
+unpacks the official `assemblies/client/target/hop-client-*.zip` into
+`dist/<name>/`. The result is **unzipped on purpose**: individual JARs stay
+replaceable, e.g. swapping in a locally patched `hop-ui`.
+
+Requirements: `git`, a JDK **21–24** (an sdkman Java 21 is auto-detected; Java 25+
+does not work — Lombok 1.18.x does not run on it), ~10 GB disk.
+
+### 3. Start and compare
 
 ```bash
-~/sources/hop-ab/dist/hop-main/hop-gui.sh                # current main
-~/sources/hop-ab/dist/hop-2.19.0-patched/hop-gui.sh      # 2.19.0 + overlay
+~/sources/hop-ab/dist/hop-main/hop-gui.sh              # current upstream main
+~/sources/hop-ab/dist/hop-2.19.0-patched/hop-gui.sh    # 2.19.0 + overlay
 ```
 
-Requirements: `git`, a JDK **21–24** (`JAVA_HOME`; an sdkman Java 21 is auto-detected —
-Java 25+ does not work because Lombok 1.18.x does not run on it), ~10 GB disk.
-First build per checkout takes ~20–40 min (cold Maven cache), afterwards ~5–15 min.
+Headless smoke test (proves classpath + plugins without opening a window):
 
-### Iterating on the patch
+```bash
+cd ~/sources/hop-ab/dist/hop-main
+./hop-run.sh -f config/projects/samples/pipelines/pipeline-with-parameter.hpl -r local -p samples
+# → "Execution finished on a local pipeline engine with run configuration 'local'"
+```
+
+### 4. Pull the newest 2.20.0-SNAPSHOT
+
+The snapshots move daily. To build the latest `main` again:
+
+```bash
+git -C ~/sources/hop-ab/hop-main pull --ff-only
+bash scripts/build-client.sh ~/sources/hop-ab/hop-main ~/sources/hop-ab/dist/hop-main
+```
+
+`build-client.sh` deletes and recreates `dist/hop-main`, so an old state can
+never linger. The 2.19.0 worktree is unaffected by the pull.
+
+### 5. Iterating on the patch
 
 1. Edit files in `overlay/`.
-2. `bash scripts/apply-ui-patch.sh ~/sources/hop-ab/hop-2.19.0` — idempotent, only
-   changed files are copied.
+2. `bash scripts/apply-ui-patch.sh ~/sources/hop-ab/hop-2.19.0`
+   (idempotent; only changed files are copied)
 3. `bash scripts/build-client.sh ~/sources/hop-ab/hop-2.19.0 ~/sources/hop-ab/dist/hop-2.19.0-patched`
-   — incremental build, a few minutes (only `ui`/`engine` sources changed).
+   (incremental, a few minutes — only `ui`/`engine` sources changed)
+
+See `docs/source-builds.md` for script reference and troubleshooting.
 
 ## Developing further UI changes
 
