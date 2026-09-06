@@ -106,6 +106,58 @@ cd /path/to/apache-hop
 
 `package` is intentional: `hop-engine` has a test-scope dependency on the `hop-core` tests JAR, which is attached during Maven's package phase.
 
+## Source builds for A/B testing
+
+The patch is validated by building two Hop clients from source and comparing them
+side by side:
+
+| Directory | Source | Purpose |
+|---|---|---|
+| `hop-main` | apache/hop `main` | current upstream state |
+| `hop-2.19.0` | pinned 2.19.0 commit + overlay | the patched variant |
+
+### One-time setup
+
+```bash
+# full clone of apache/hop + a worktree at the pinned 2.19.0 commit + overlay applied
+bash scripts/setup-checkouts.sh ~/sources/hop-ab
+```
+
+Creates `~/sources/hop-ab/hop-main` and `~/sources/hop-ab/hop-2.19.0` (shared git object
+store, ~1 GB once). The overlay installer verifies the pinned commit — no other Hop revision
+is accepted.
+
+### Build both clients
+
+```bash
+bash scripts/build-ab-dist.sh \
+  ~/sources/hop-ab/hop-main \
+  ~/sources/hop-ab/hop-2.19.0 \
+  ~/sources/hop-ab/dist
+```
+
+Each build runs `./mvnw -DskipTests clean package` in the checkout (full reactor including
+all plugins) and unpacks the official `assemblies/client/target/hop-client-*.zip` into
+`dist/hop-main/` and `dist/hop-2.19.0-patched/`. The results are **unzipped** so individual
+JARs stay replaceable.
+
+```bash
+~/sources/hop-ab/dist/hop-main/hop-gui.sh                # current main
+~/sources/hop-ab/dist/hop-2.19.0-patched/hop-gui.sh      # 2.19.0 + overlay
+```
+
+Requirements: `git`, a JDK **21–24** (`JAVA_HOME`; an sdkman Java 21 is auto-detected —
+Java 25+ does not work because Lombok 1.18.x does not run on it), ~10 GB disk.
+First build per checkout takes ~20–40 min (cold Maven cache), afterwards ~5–15 min.
+
+### Iterating on the patch
+
+1. Edit files in `overlay/`.
+2. `bash scripts/apply-ui-patch.sh ~/sources/hop-ab/hop-2.19.0` — idempotent, only
+   changed files are copied.
+3. `bash scripts/build-client.sh ~/sources/hop-ab/hop-2.19.0 ~/sources/hop-ab/dist/hop-2.19.0-patched`
+   — incremental build, a few minutes (only `ui`/`engine` sources changed).
+
 ## Developing further UI changes
 
 For new phases, modify the desired Apache Hop source files in `overlay/` directly (or regenerate them from a clean pinned Hop checkout), then run the normal CI build. No new phase applicator, marker set or state migration is required.
